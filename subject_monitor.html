@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>BNU · 实验体监控终端</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050711;
+      color: #e5f0ff;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      height: 48px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(90deg, #050711, #0a1224);
+      border-bottom: 1px solid rgba(120,170,255,0.4);
+      box-shadow: 0 0 12px rgba(40,140,255,0.5);
+    }
+    header .title {
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #b9c9ff;
+    }
+    header .title span { color: #7fffd4; }
+    header .status {
+      font-size: 11px;
+      color: #8fa2ff;
+    }
+
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 180px minmax(0, 2fr) minmax(0, 1.2fr);
+      height: calc(100vh - 48px);
+    }
+
+    /* 左侧列表 */
+    .sidebar {
+      border-right: 1px solid rgba(120,170,255,0.3);
+      background: radial-gradient(circle at top, rgba(60,110,255,0.3), #050711 55%);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sidebar-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #7f92d6;
+      margin-bottom: 4px;
+    }
+    .subject-item {
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(130,170,255,0.6);
+      background: radial-gradient(circle at left top, rgba(60,90,180,0.4), rgba(5,7,18,0.95));
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .12s ease-out;
+    }
+    .subject-item:hover {
+      box-shadow: 0 0 10px rgba(100,150,255,0.8);
+      transform: translateY(-1px);
+    }
+    .subject-item.active {
+      background: linear-gradient(135deg, #1b2e7a, #5b21ff);
+      border-color: rgba(255,255,255,0.9);
+    }
+    .subject-id {
+      font-size: 10px;
+      color: #9fb1ff;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .subject-name {
+      font-size: 13px;
+      color: #e9f0ff;
+      margin-top: 2px;
+    }
+    .subject-meta {
+      font-size: 10px;
+      color: #9aa9f0;
+      margin-top: 2px;
+    }
+
+    /* 中间主监控 */
+    .monitor {
+      padding: 8px;
+      background: radial-gradient(circle at top, rgba(120,180,255,0.2), #050711 65%);
+      border-right: 1px solid rgba(120,170,255,0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .monitor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .monitor-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #dbe4ff;
+    }
+    .monitor-subtitle {
+      font-size: 10px;
+      color: #8fa2ff;
+    }
+    .monitor-screen {
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid rgba(145,190,255,0.8);
+      background: radial-gradient(circle at top, #06132b, #02040a);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+    .screen-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #7685c9;
+      margin-bottom: 6px;
+    }
+    .screen-body {
+      flex: 1;
+      border-radius: 10px;
+      border: 1px solid rgba(90,160,255,0.6);
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(0,255,200,0.15),
+          rgba(0,255,200,0.15) 1px,
+          rgba(3,10,20,1) 1px,
+          rgba(3,10,20,1) 3px
+        );
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9be7ff;
+      text-shadow: 0 0 4px rgba(0,255,200,0.8);
+      font-size: 12px;
+    }
+    .scan-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0,255,200,1), transparent);
+      animation: scan 2s linear infinite;
+    }
+    .scan-noise {
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 100% 2px, 2px 100%;
+      opacity: 0.2;
+      pointer-events: none;
+    }
+    .silhouette {
+      width: 74%;
+      height: 74%;
+      border-radius: 52% 48% 55% 45%;
+      border: 2px solid rgba(0,255,200,0.6);
+      box-shadow: 0 0 35px rgba(0,255,200,0.7);
+      position: relative;
+      background: radial-gradient(circle at 50% 36%, rgba(0,255,200,0.35), rgba(3,10,20,0.7) 60%);
+      overflow: hidden;
+    }
+    .silhouette::before {
+      content: "";
+      position: absolute;
+      inset: 12%;
+      border-radius: 45% 45% 58% 52%;
+      border: 2px solid rgba(0,255,200,0.45);
+      box-shadow: 0 0 25px rgba(0,255,200,0.9);
+      transform: rotate(-8deg);
+      opacity: 0.8;
+    }
+    .silhouette::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 40%, rgba(0,255,200,0.18), transparent 55%);
+      mix-blend-mode: screen;
+      opacity: 0.7;
+    }
+    .silhouette-image {
+      position: absolute;
+      inset: 6% 6% 8% 6%;
+      width: 88%;
+      height: 86%;
+      object-fit: contain;
+      mix-blend-mode: screen;
+      opacity: 0.95;
+      filter: drop-shadow(0 0 18px rgba(0,255,200,0.85)) contrast(1.25) saturate(1.3);
+      transition: opacity .2s ease-out;
+      pointer-events: none;
+    }
+    .silhouette .tail {
+      display: none;
+      pointer-events: none;
+    }
+
+    /* 物种差异化轮廓 */
+    .silhouette.cat {
+      border-radius: 58% 42% 62% 38%;
+      background: radial-gradient(circle at 50% 32%, rgba(0,255,200,0.5), rgba(3,10,20,0.8) 58%);
+    }
+    .silhouette.cat::before {
+      border-radius: 52% 48% 70% 30%;
+      transform: rotate(-4deg);
+    }
+    .silhouette.cat::after {
+      background:
+        radial-gradient(circle at 68% 62%, rgba(0,255,200,0.4), transparent 40%),
+        linear-gradient(120deg, rgba(0,255,200,0.6), transparent 65%);
+      border-radius: 60% 40% 55% 45%;
+    }
+    .silhouette.cat .tail {
+      position: absolute;
+      width: 32%;
+      height: 8%;
+      background: linear-gradient(90deg, rgba(0,255,200,0.7), transparent);
+      border-radius: 999px;
+      bottom: 20%;
+      right: -8%;
+      box-shadow: 0 0 14px rgba(0,255,200,0.7);
+      transform: rotate(22deg);
+      opacity: 0.8;
+    }
+
+    .silhouette.monkey {
+      border-radius: 46% 54% 68% 32%;
+      background: radial-gradient(circle at 50% 30%, rgba(0,255,200,0.45), rgba(3,10,20,0.82) 60%);
+    }
+    .silhouette.monkey::before {
+      border-radius: 40% 60% 64% 36%;
+      transform: rotate(-12deg);
+    }
+    .silhouette.monkey::after {
+      background:
+        radial-gradient(ellipse at 50% 72%, rgba(0,255,200,0.45), transparent 48%),
+        radial-gradient(circle at 52% 32%, rgba(0,255,200,0.22), transparent 45%);
+    }
+    .silhouette.monkey .tail {
+      position: absolute;
+      width: 54%;
+      height: 10%;
+      background: linear-gradient(90deg, rgba(0,255,200,0.6), transparent);
+      border-radius: 999px;
+      bottom: 26%;
+      right: -18%;
+      box-shadow: 0 0 14px rgba(0,255,200,0.7);
+      transform: rotate(-12deg) scaleX(1.2);
+      opacity: 0.75;
+    }
+
+    .silhouette.human {
+      border-radius: 38% 38% 54% 54%;
+      background: radial-gradient(circle at 50% 28%, rgba(0,255,200,0.48), rgba(3,10,20,0.85) 64%);
+    }
+    .silhouette.human::before {
+      border-radius: 40% 40% 58% 58%;
+      transform: rotate(-2deg);
+    }
+    .silhouette.human::after {
+      background:
+        radial-gradient(ellipse at 50% 70%, rgba(0,255,200,0.3), transparent 52%),
+        radial-gradient(circle at 50% 22%, rgba(0,255,200,0.3), transparent 36%);
+    }
+    .silhouette.human .tail { display: none; }
+
+    /* 动作状态 */
+    .motion-approach { animation: approach 3.8s ease-in-out; }
+    .motion-retreat { animation: retreat 3.6s ease-in-out; }
+    .motion-pace { animation: pace 4s ease-in-out; }
+
+    /* 实验舱预览网格 */
+    .preview-grid {
+      position: absolute;
+      inset: 6px;
+      padding: 6px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      z-index: 2;
+    }
+    .preview-card {
+      border: 1px solid rgba(135,175,255,0.9);
+      border-radius: 10px;
+      background: radial-gradient(circle at top, rgba(20,50,110,0.9), rgba(3,7,18,0.9));
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: stretch;
+      cursor: pointer;
+      transition: all .18s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+    .preview-card:hover {
+      box-shadow: 0 0 10px rgba(130,175,255,0.9);
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.9);
+    }
+    .preview-thumb {
+      width: 54px;
+      height: 54px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid rgba(130,175,255,0.7);
+      background: rgba(0,255,200,0.08);
+      mix-blend-mode: screen;
+    }
+    .preview-mini {
+      position: relative;
+      flex: 1;
+      min-height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: radial-gradient(circle at top, rgba(10,20,50,0.8), rgba(2,5,12,0.95));
+      border: 1px solid rgba(110,160,240,0.5);
+    }
+    .preview-mini.preview-motion-approach { animation: previewApproach 9s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
+    .preview-mini.preview-motion-retreat { animation: previewRetreat 8.5s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
+    .preview-mini.preview-motion-pace { animation: previewPace 10s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
+    .preview-mini .preview-bg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 88%;
+      height: 88%;
+      transform: translate(-50%, -50%) scale(0.9);
+      object-fit: contain;
+      object-position: center;
+      opacity: 0.42;
+      mix-blend-mode: screen;
+      filter: drop-shadow(0 0 16px rgba(0,255,200,0.8)) saturate(1.2);
+      pointer-events: none;
+    }
+    .preview-card:hover .preview-bg { opacity: 0.65; }
+    @keyframes previewApproach {
+      0% { transform: scale(0.995); opacity: 0.94; box-shadow: 0 0 0 rgba(0,255,200,0.08); }
+      50% { transform: scale(1.01); opacity: 1; box-shadow: 0 0 10px rgba(0,255,200,0.18); }
+      100% { transform: scale(0.997); opacity: 0.95; box-shadow: 0 0 0 rgba(0,255,200,0.08); }
+    }
+    @keyframes previewRetreat {
+      0% { transform: scale(1); opacity: 0.94; filter: blur(0); }
+      50% { transform: scale(0.985); opacity: 0.88; filter: blur(0.15px); }
+      100% { transform: scale(0.995); opacity: 0.93; filter: blur(0); }
+    }
+    @keyframes previewPace {
+      0% { transform: scale(0.995); }
+      30% { transform: scale(1.007); }
+      65% { transform: scale(0.992); }
+      100% { transform: scale(1); }
+    }
+    .preview-mini .preview-scan {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0,255,200,0.8), transparent);
+      animation: scan 2.6s linear infinite;
+      opacity: 0.6;
+    }
+    .preview-mini .preview-noise {
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 100% 2px, 2px 100%;
+      opacity: 0.18;
+      pointer-events: none;
+    }
+    .preview-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 10px;
+      color: #cfe5ff;
+      position: relative;
+      z-index: 1;
+    }
+    .preview-id { letter-spacing: 0.12em; text-transform: uppercase; color: #8fa9ff; }
+    .preview-name { font-size: 12px; color: #e9f3ff; }
+    .preview-stage { color: #9bdfff; }
+    .preview-empty { justify-content: center; color: #7f9bd6; }
+
+    @keyframes approach {
+      0% { transform: translateY(6px) scale(0.9); opacity: 0.75; filter: blur(0px); }
+      50% { transform: translateY(-2px) scale(1.08); opacity: 1; filter: drop-shadow(0 0 18px rgba(0,255,200,0.9)); }
+      100% { transform: translateY(0) scale(1); opacity: 0.95; }
+    }
+    @keyframes retreat {
+      0% { transform: translateY(-2px) scale(1); opacity: 0.95; }
+      50% { transform: translateY(10px) scale(0.86); opacity: 0.65; filter: blur(1px); }
+      100% { transform: translateY(4px) scale(0.92); opacity: 0.78; }
+    }
+    @keyframes pace {
+      0% { transform: translateX(-8px) scale(0.95); }
+      35% { transform: translateX(6px) translateY(-2px) scale(0.98); }
+      65% { transform: translateX(-4px) translateY(2px) scale(0.93); }
+      100% { transform: translateX(5px) scale(0.96); }
+    }
+    .screen-footer {
+      position: absolute;
+      bottom: 6px;
+      left: 10px;
+      right: 10px;
+      font-size: 10px;
+      color: #a7dfff;
+      display: flex;
+      justify-content: space-between;
+    }
+    .monitor-info {
+      margin-top: 6px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      font-size: 10px;
+    }
+    .info-card {
+      border-radius: 8px;
+      border: 1px solid rgba(130,170,255,0.8);
+      background: radial-gradient(circle at top, rgba(20,35,95,0.9), rgba(4,8,20,0.98));
+      padding: 5px 6px;
+    }
+    .info-label {
+      font-size: 10px;
+      color: #8ea1ff;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 3px;
+    }
+    .info-value {
+      font-size: 13px;
+      color: #e7efff;
+    }
+    .info-desc {
+      font-size: 10px;
+      margin-top: 2px;
+      color: #91a2f0;
+    }
+
+    .vitals {
+      margin-top: 4px;
+      padding: 5px 6px;
+      border-radius: 9px;
+      border: 1px solid rgba(130,170,255,0.9);
+      background: radial-gradient(circle at top, rgba(20,40,100,0.95), rgba(3,7,18,0.98));
+      font-size: 10px;
+    }
+    .vitals-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+      align-items: center;
+    }
+    .vital-label {
+      width: 70px;
+      color: #98adff;
+    }
+    .vital-bar {
+      flex: 1;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(9,14,30,0.9);
+      overflow: hidden;
+    }
+    .vital-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #38e9b5, #8ef5ff);
+      width: 40%;
+      transition: width .4s ease-out;
+    }
+    .vital-fill.alert {
+      background: linear-gradient(90deg, #ff6b81, #ffd4a5);
+      box-shadow: 0 0 8px rgba(255,107,129,0.8);
+    }
+    .vital-fill.red {
+      background: linear-gradient(90deg, #ff6b81, #ffe4a5);
+    }
+    .vital-value {
+      width: 60px;
+      text-align: right;
+      color: #dfe7ff;
+    }
+    .monitor-buttons {
+      margin-top: 4px;
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(140,180,255,0.9);
+      background: radial-gradient(circle at top, rgba(40,70,150,0.95), rgba(4,7,18,1));
+      color: #e7efff;
+      cursor: pointer;
+    }
+    .btn:hover {
+      box-shadow: 0 0 8px rgba(140,180,255,0.9);
+      transform: translateY(-1px);
+    }
+
+    /* 右侧日志 */
+    .log-panel {
+      padding: 8px;
+      background: radial-gradient(circle at right top, rgba(140,190,255,0.25), #050711 65%);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-header { display: flex; align-items: center; justify-content: space-between; }
+    .log-title {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #d0ddff;
+    }
+    .log-sub {
+      font-size: 10px;
+      color: #92a4ff;
+    }
+    .log-list {
+      flex: 1;
+      border-radius: 10px;
+      border: 1px solid rgba(135,175,255,0.9);
+      background: radial-gradient(circle at top, rgba(14,32,86,0.9), rgba(3,7,20,0.98));
+      padding: 6px 7px;
+      overflow-y: auto;
+      font-size: 10px;
+    }
+    .btn-log {
+      padding: 4px 8px;
+      font-size: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(140,180,255,0.8);
+      background: rgba(30,60,120,0.8);
+      color: #e7efff;
+      cursor: pointer;
+    }
+    .btn-log:hover {
+      box-shadow: 0 0 8px rgba(140,180,255,0.9);
+      transform: translateY(-1px);
+    }
+    .log-entry {
+      border-bottom: 1px dashed rgba(100,135,220,0.6);
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-meta {
+      display: flex;
+      justify-content: space-between;
+      color: #8fa1f0;
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+    .log-text {
+      color: #dde6ff;
+      white-space: pre-line;
+    }
+    .log-entry.alert .log-text { color: #ffb3c2; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(6,9,22,0.9); }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(130,165,245,0.8);
+      border-radius: 999px;
+    }
+    .hidden { display: none !important; }
+
+    @keyframes scan {
+      0% { transform: translateY(-100%); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(100%); opacity: 0; }
+    }
+
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .main {
+        display: block;
+        height: auto;
+      }
+      .sidebar {
+        border-bottom: 1px solid rgba(120,170,255,0.3);
+        border-right: none;
+      }
+      .monitor, .log-panel {
+        height: 360px;
+      }
+    }
+
+    @media (max-width: 1200px) {
+      body { font-size: 13px; }
+      header { height: 44px; padding: 5px 10px; }
+      .main { grid-template-columns: 160px minmax(0, 1.7fr) minmax(0, 1.1fr); }
+      .monitor, .log-panel, .sidebar { padding: 7px; }
+      .monitor-screen { padding: 5px; }
+      .monitor-info { gap: 5px; }
+      .vitals { padding: 4px 5px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="title">BNU · <span>SUBJECT MONITOR</span></div>
+    <div class="status" id="header-status">
+      当前实验体：——
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- 左侧：实验体列表 -->
+    <aside class="sidebar">
+      <div class="sidebar-title">实验体 / SUBJECTS</div>
+      <div id="subject-list"></div>
+    </aside>
+
+    <!-- 中间：监控屏幕 -->
+    <section class="monitor">
+      <div class="monitor-header">
+        <div class="monitor-title">LIVE OBSERVATION</div>
+        <div class="monitor-subtitle" id="monitor-subtitle">选择左侧实验体开始观察</div>
+      </div>
+
+      <div class="monitor-screen">
+        <div class="screen-label">遮蔽舱红外轮廓</div>
+        <div class="screen-body" id="screen-body">
+          <div class="scan-line"></div>
+          <div class="scan-noise"></div>
+          <div class="preview-grid" id="preview-grid"></div>
+          <div class="silhouette" id="silhouette">
+            <img class="silhouette-image" id="silhouette-img" alt="实验体红外轮廓" />
+            <div class="tail"></div>
+          </div>
+        </div>
+        <div class="screen-footer">
+          <span id="screen-footer-left">状态：待机</span>
+          <span id="screen-footer-right">RW 注射时长：——</span>
+        </div>
+      </div>
+
+      <div class="monitor-info">
+        <div class="info-card">
+          <div class="info-label">实验体代号</div>
+          <div class="info-value" id="info-id">——</div>
+          <div class="info-desc" id="info-species">物种：——</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">异化阶段</div>
+          <div class="info-value" id="info-stage">未监控</div>
+          <div class="info-desc" id="info-risk">风险：——</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">观察备注</div>
+          <div class="info-desc" id="info-note">
+            选择实验体后，将在此显示关键行为特征。
+          </div>
+        </div>
+      </div>
+
+      <div class="vitals">
+        <div class="vitals-row">
+          <div class="vital-label">心率</div>
+          <div class="vital-bar">
+            <div class="vital-fill" id="vital-heart"></div>
+          </div>
+          <div class="vital-value" id="vital-heart-text">——</div>
+        </div>
+        <div class="vitals-row">
+          <div class="vital-label">脑电活动</div>
+          <div class="vital-bar">
+            <div class="vital-fill" id="vital-brain"></div>
+          </div>
+          <div class="vital-value" id="vital-brain-text">——</div>
+        </div>
+        <div class="vitals-row">
+          <div class="vital-label">异化进度</div>
+          <div class="vital-bar">
+            <div class="vital-fill red" id="vital-shift"></div>
+          </div>
+          <div class="vital-value" id="vital-shift-text">0%</div>
+        </div>
+      </div>
+
+      <div class="monitor-buttons">
+        <button class="btn" id="btn-sample">采集数据</button>
+        <button class="btn" id="btn-random">刷新生命体征</button>
+      </div>
+    </section>
+
+    <!-- 右侧：监控日志 -->
+    <aside class="log-panel">
+      <div class="log-header">
+        <div>
+          <div class="log-title">监控日志 / LOG</div>
+          <div class="log-sub">记录当前实验体的关键事件与异常行为。</div>
+        </div>
+        <button class="btn-log" id="btn-alert-log">异常日志</button>
+      </div>
+      <div class="log-list" id="log-list"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  // 简单状态
+  const subjects = [
+    {
+      id: "S-01",
+      name: "猫（RW-12M）",
+      species: "Felis catus",
+      stage: "异化中",
+      risk: "高",
+      note: "红外轮廓近似人形，头部持续对着监控室。",
+      rwDuration: "12 个月",
+      baseShift: 0,
+      shift: 0,
+      image: "arts/猫-红外轮廓1.png"
+    },
+    {
+      id: "S-07",
+      name: "猕猴（RW-11M）",
+      species: "Macaca mulatta",
+      stage: "前异化",
+      risk: "中",
+      note: "疑似出现类语言发声，个体对镜头有明显回避行为。",
+      rwDuration: "11 个月",
+      baseShift: 0,
+      shift: 0,
+      image: "arts/猴-红外轮廓1.png"
+    },
+    {
+      id: "S-13",
+      name: "人类志愿者（RW-10M）",
+      species: "Homo sapiens",
+      stage: "潜伏期",
+      risk: "极高",
+      note: "轻微记忆缺失，自述反复梦见“被迷雾拉回十年前”。",
+      rwDuration: "10 个月",
+      baseShift: 0,
+      shift: 0,
+      image: "arts/人-红外轮廓1.png"
+    }
+  ];
+
+  let currentSubject = null;
+
+  // DOM 引用
+  const subjectListEl = document.getElementById("subject-list");
+  const headerStatusEl = document.getElementById("header-status");
+  const monitorSubtitleEl = document.getElementById("monitor-subtitle");
+  const screenFooterLeft = document.getElementById("screen-footer-left");
+  const screenFooterRight = document.getElementById("screen-footer-right");
+  const infoIdEl = document.getElementById("info-id");
+  const infoSpeciesEl = document.getElementById("info-species");
+  const infoStageEl = document.getElementById("info-stage");
+  const infoRiskEl = document.getElementById("info-risk");
+  const infoNoteEl = document.getElementById("info-note");
+  const vitalHeartFill = document.getElementById("vital-heart");
+  const vitalBrainFill = document.getElementById("vital-brain");
+  const vitalShiftFill = document.getElementById("vital-shift");
+  const vitalHeartText = document.getElementById("vital-heart-text");
+  const vitalBrainText = document.getElementById("vital-brain-text");
+  const vitalShiftText = document.getElementById("vital-shift-text");
+  const logListEl = document.getElementById("log-list");
+  const btnSample = document.getElementById("btn-sample");
+  const btnRandom = document.getElementById("btn-random");
+  const silhouetteEl = document.getElementById("silhouette");
+  const silhouetteImg = document.getElementById("silhouette-img");
+  const previewGrid = document.getElementById("preview-grid");
+  const btnAlertLog = document.getElementById("btn-alert-log");
+  const MAX_LOGS = 20;
+  const SAMPLE_COOLDOWN = 5000;
+  let motionTimer = null;
+  let previewMotionHandles = [];
+  let vitalsTimer = null;
+  let currentShift = 0;
+  let heartAlert = false;
+  let brainAlert = false;
+  const alertLogs = [];
+  const logs = [];
+  let alertView = false;
+  let lastSampleTs = 0;
+
+  // 渲染左侧实验体列表
+  function renderSubjectList() {
+    subjectListEl.innerHTML = "";
+    subjects.forEach((s, index) => {
+      const item = document.createElement("div");
+      item.className = "subject-item";
+      item.dataset.id = s.id;
+      item.innerHTML = `
+        <div class="subject-id">${s.id}</div>
+        <div class="subject-name">${s.name}</div>
+        <div class="subject-meta">RW 注射：${s.rwDuration}</div>
+      `;
+      item.addEventListener("click", () => selectSubject(index));
+      subjectListEl.appendChild(item);
+    });
+  }
+
+  function selectSubject(idx) {
+    currentSubject = subjects[idx];
+    previewGrid.style.display = "none";
+    silhouetteEl.style.display = "flex";
+    previewMotionHandles.forEach(h => clearTimeout(h));
+    previewMotionHandles = [];
+    clearInterval(vitalsTimer);
+    vitalsTimer = null;
+    currentShift = currentSubject.shift || 0;
+    heartAlert = false;
+    brainAlert = false;
+    // 激活样式
+    document.querySelectorAll(".subject-item").forEach((el, i) => {
+      el.classList.toggle("active", i === idx);
+    });
+
+    headerStatusEl.textContent = `当前实验体：${currentSubject.id} / ${currentSubject.name}`;
+    monitorSubtitleEl.textContent = "遮蔽舱联机中… 已锁定当前实验体。";
+    screenFooterLeft.textContent = `状态：${currentSubject.stage}`;
+    screenFooterRight.textContent = `RW 注射时长：${currentSubject.rwDuration}`;
+
+    infoIdEl.textContent = currentSubject.id;
+    infoSpeciesEl.textContent = `物种：${currentSubject.species}`;
+    infoStageEl.textContent = currentSubject.stage;
+    infoRiskEl.textContent = `风险：${currentSubject.risk}`;
+    infoNoteEl.textContent = currentSubject.note;
+
+    // 根据实验体调整“轮廓光圈”大小
+    setSilhouetteAppearance(currentSubject.id);
+
+    randomizeVitals(true);
+    vitalsTimer = setInterval(() => randomizeVitals(), 5000);
+    addLog(`切换监控目标为 ${currentSubject.id}（${currentSubject.name}）。`);
+    startSilhouetteMotion(true);
+  }
+
+  function setSilhouetteAppearance(id) {
+    silhouetteEl.className = "silhouette";
+    const tailEl = silhouetteEl.querySelector(".tail");
+    const subject = subjects.find(s => s.id === id);
+    silhouetteImg.src = subject?.image || "";
+    silhouetteImg.style.opacity = subject ? "1" : "0";
+    if (id === "S-01") {
+      silhouetteEl.classList.add("cat");
+      tailEl.style.display = "none";
+    } else if (id === "S-07") {
+      silhouetteEl.classList.add("monkey");
+      tailEl.style.display = "none";
+    } else {
+      silhouetteEl.classList.add("human");
+      tailEl.style.display = "none";
+    }
+  }
+
+  // 随机生命体征
+  function randomizeVitals(resetShift = false) {
+    if (!currentSubject) return;
+    // 物种区间
+    const ranges = {
+      "S-01": { heart: [120, 170], brain: [55, 82] }, // 猫
+      "S-07": { heart: [90, 135], brain: [60, 90] },  // 猕猴
+      "S-13": { heart: [60, 110], brain: [50, 85] }   // 人类
+    };
+    const { heart: [hMin, hMax], brain: [bMin, bMax] } = ranges[currentSubject.id] || { heart: [70, 120], brain: [50, 90] };
+
+    // 基础波动
+    let hr = Math.round(hMin + Math.random() * (hMax - hMin));
+    let brain = Math.round(bMin + Math.random() * (bMax - bMin));
+
+    // 异常大幅波动
+    heartAlert = Math.random() < 0.25;
+    brainAlert = Math.random() < 0.25;
+    if (heartAlert) hr = Math.min(hMax + 30, hr + 25 + Math.round(Math.random() * 20));
+    if (brainAlert) brain = Math.min(bMax + 25, brain + 15 + Math.round(Math.random() * 25));
+
+    // 异化累加
+    if (resetShift) currentShift = currentSubject.shift || 0;
+    vitalHeartFill.style.width = Math.min(hr / 2, 100) + "%";
+    vitalBrainFill.style.width = Math.min(brain, 100) + "%";
+    vitalShiftFill.style.width = Math.min(currentShift, 100) + "%";
+
+    vitalHeartFill.classList.toggle("alert", heartAlert);
+    vitalBrainFill.classList.toggle("alert", brainAlert);
+    vitalHeartText.textContent = hr + " bpm";
+    vitalBrainText.textContent = brain + "%";
+    vitalShiftText.textContent = currentShift.toFixed(1) + "%";
+
+    const logText = `生命体征更新：心率 ${hr} bpm${heartAlert ? "（异常）" : ""}，脑电活动 ${brain}%${brainAlert ? "（异常）" : ""}，异化进度 ${currentShift}%。`;
+    const alertFlag = heartAlert || brainAlert;
+    addLog(logText, true, alertFlag);
+  }
+
+  // 添加日志
+  function renderLogList(list) {
+    logListEl.innerHTML = "";
+    list.forEach(item => {
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      if (item.alert) entry.classList.add("alert");
+
+      const meta = document.createElement("div");
+      meta.className = "log-meta";
+      meta.innerHTML = `<span>${item.subject}</span><span>${item.ts}</span>`;
+
+      const body = document.createElement("div");
+      body.className = "log-text";
+      body.textContent = item.text + (item.light ? "" : "\n");
+
+      entry.appendChild(meta);
+      entry.appendChild(body);
+      logListEl.appendChild(entry);
+    });
+    logListEl.scrollTop = logListEl.scrollHeight;
+  }
+
+  function addLog(text, light = false, alert = false) {
+    const now = new Date();
+    const ts = now.toLocaleTimeString("zh-CN", { hour12: false });
+    const subjectId = currentSubject ? currentSubject.id : "——";
+    const logItem = { ts, subject: subjectId, text, alert, light };
+
+    logs.push(logItem);
+    if (logs.length > MAX_LOGS) {
+      logs.shift();
+    }
+    if (alert) {
+      alertLogs.push(logItem);
+    }
+
+    renderLogList(alertView ? alertLogs : logs);
+  }
+
+  // 绑定按钮
+  btnSample.addEventListener("click", () => {
+    if (!currentSubject) {
+      alert("请先选择一个实验体。");
+      return;
+    }
+    const now = Date.now();
+    if (now - lastSampleTs < SAMPLE_COOLDOWN) {
+      return;
+    }
+    lastSampleTs = now;
+
+    const alertFlag = heartAlert || brainAlert;
+    let inc = 0;
+    if (heartAlert && brainAlert) {
+      inc = parseFloat((5 + Math.random() * 10).toFixed(1)); // 5.0-15.0
+    } else if (alertFlag) {
+      inc = parseFloat((Math.random() * 10).toFixed(1)); // 0.0-10.0
+    }
+    currentShift = Math.min(100, currentShift + inc);
+    currentSubject.shift = currentShift;
+    vitalShiftFill.style.width = Math.min(currentShift, 100) + "%";
+    vitalShiftText.textContent = currentShift.toFixed(1) + "%";
+
+    addLog(
+      `采集数据：记录 ${currentSubject.id} 的当前姿态与行为。\n备注：红外轮廓在摄像头外缘停留时间异常延长。${inc > 0 ? ` 异化进度 +${inc.toFixed(1)}%` : ""}`,
+      false,
+      alertFlag
+    );
+  });
+
+  btnRandom.addEventListener("click", () => {
+    if (!currentSubject) {
+      alert("请先选择一个实验体。");
+      return;
+    }
+    randomizeVitals();
+    startSilhouetteMotion(true);
+  });
+
+  btnAlertLog.addEventListener("click", () => {
+    alertView = !alertView;
+    btnAlertLog.textContent = alertView ? "返回监控日志" : "异常日志";
+    renderLogList(alertView ? alertLogs : logs);
+  });
+
+  function renderPreviewGrid() {
+    previewGrid.innerHTML = "";
+    subjects.forEach((s, index) => {
+      const card = document.createElement("div");
+      card.className = "preview-card";
+      card.innerHTML = `
+        <div class="preview-mini">
+          <div class="preview-scan"></div>
+          <div class="preview-noise"></div>
+          <img class="preview-bg" src="${s.image}" alt="${s.name}" />
+        </div>
+        <div class="preview-meta">
+          <div class="preview-id">${s.id}</div>
+          <div class="preview-name">${s.name}</div>
+          <div class="preview-stage">阶段：${s.stage}</div>
+        </div>
+      `;
+      card.addEventListener("click", () => selectSubject(index));
+      previewGrid.appendChild(card);
+    });
+    const placeholder = document.createElement("div");
+    placeholder.className = "preview-card preview-empty";
+    placeholder.innerHTML = `<div class="preview-meta">备用遮蔽舱<br>待分配实验体</div>`;
+    previewGrid.appendChild(placeholder);
+    startPreviewMotion();
+  }
+
+  function showPreview() {
+    currentSubject = null;
+    clearTimeout(motionTimer);
+    motionTimer = null;
+    previewMotionHandles.forEach(h => clearTimeout(h));
+    previewMotionHandles = [];
+    clearInterval(vitalsTimer);
+    vitalsTimer = null;
+    previewGrid.style.display = "grid";
+    silhouetteEl.style.display = "none";
+    headerStatusEl.textContent = "当前实验体：——";
+    monitorSubtitleEl.textContent = "选择实验舱开始监控。";
+    screenFooterLeft.textContent = "状态：待机";
+    screenFooterRight.textContent = "RW 注射时长：——";
+    infoIdEl.textContent = "——";
+    infoSpeciesEl.textContent = "物种：——";
+    infoStageEl.textContent = "未监控";
+    infoRiskEl.textContent = "风险：——";
+    infoNoteEl.textContent = "选择实验体后，将在此显示关键行为特征。";
+    vitalHeartFill.style.width = "0%";
+    vitalBrainFill.style.width = "0%";
+    vitalShiftFill.style.width = "0%";
+    vitalHeartText.textContent = "——";
+    vitalBrainText.textContent = "——";
+    vitalShiftText.textContent = "0%";
+    startPreviewMotion();
+  }
+
+  function startSilhouetteMotion(forceRestart = false) {
+    if (!currentSubject) return;
+    if (motionTimer && !forceRestart) return;
+    clearTimeout(motionTimer);
+    const motions = ["approach", "retreat", "pace"];
+    const nextMotion = () => {
+      if (!currentSubject) return;
+      silhouetteEl.classList.remove("motion-approach", "motion-retreat", "motion-pace");
+      const m = motions[Math.floor(Math.random() * motions.length)];
+      silhouetteEl.classList.add(`motion-${m}`);
+      motionTimer = setTimeout(nextMotion, 4200 + Math.random() * 1200);
+    };
+    nextMotion();
+  }
+
+  function startPreviewMotion() {
+    const minis = previewGrid.querySelectorAll(".preview-mini");
+    const motions = ["preview-motion-approach", "preview-motion-retreat", "preview-motion-pace"];
+    minis.forEach(mini => mini.classList.remove(...motions));
+    const run = () => {
+      minis.forEach(mini => {
+        motions.forEach(m => mini.classList.remove(m));
+        const m = motions[Math.floor(Math.random() * motions.length)];
+        const delay = Math.random() * 1200;
+        const handle = setTimeout(() => {
+          mini.style.animationDelay = `${(-Math.random() * 2).toFixed(2)}s`;
+          mini.classList.add(m);
+        }, delay);
+        previewMotionHandles.push(handle);
+      });
+    };
+    run();
+  }
+
+  // 初始化
+  renderSubjectList();
+  renderPreviewGrid();
+  showPreview();
+  addLog("系统启动：展示实验舱预览，等待选择实验体。");
+</script>
+</body>
+</html>
