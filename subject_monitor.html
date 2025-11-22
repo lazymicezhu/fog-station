@@ -3,635 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <title>BNU · 实验体监控终端</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #050711;
-      color: #e5f0ff;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    header {
-      height: 48px;
-      padding: 6px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: linear-gradient(90deg, #050711, #0a1224);
-      border-bottom: 1px solid rgba(120,170,255,0.4);
-      box-shadow: 0 0 12px rgba(40,140,255,0.5);
-    }
-    header .title {
-      font-size: 13px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: #b9c9ff;
-    }
-    header .title span { color: #7fffd4; }
-    header .status {
-      font-size: 11px;
-      color: #8fa2ff;
-    }
-
-    .main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 180px minmax(0, 2fr) minmax(0, 1.2fr);
-      height: calc(100vh - 48px);
-    }
-
-    /* 左侧列表 */
-    .sidebar {
-      border-right: 1px solid rgba(120,170,255,0.3);
-      background: radial-gradient(circle at top, rgba(60,110,255,0.3), #050711 55%);
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .sidebar-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: #7f92d6;
-      margin-bottom: 4px;
-    }
-    .subject-item {
-      padding: 6px 8px;
-      margin-bottom: 4px;
-      border-radius: 8px;
-      border: 1px solid rgba(130,170,255,0.6);
-      background: radial-gradient(circle at left top, rgba(60,90,180,0.4), rgba(5,7,18,0.95));
-      font-size: 11px;
-      cursor: pointer;
-      transition: all .12s ease-out;
-    }
-    .subject-item:hover {
-      box-shadow: 0 0 10px rgba(100,150,255,0.8);
-      transform: translateY(-1px);
-    }
-    .subject-item.active {
-      background: linear-gradient(135deg, #1b2e7a, #5b21ff);
-      border-color: rgba(255,255,255,0.9);
-    }
-    .subject-id {
-      font-size: 10px;
-      color: #9fb1ff;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-    .subject-name {
-      font-size: 13px;
-      color: #e9f0ff;
-      margin-top: 2px;
-    }
-    .subject-meta {
-      font-size: 10px;
-      color: #9aa9f0;
-      margin-top: 2px;
-    }
-
-    /* 中间主监控 */
-    .monitor {
-      padding: 8px;
-      background: radial-gradient(circle at top, rgba(120,180,255,0.2), #050711 65%);
-      border-right: 1px solid rgba(120,170,255,0.3);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .monitor-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-    .monitor-title {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-      color: #dbe4ff;
-    }
-    .monitor-subtitle {
-      font-size: 10px;
-      color: #8fa2ff;
-    }
-    .monitor-screen {
-      flex: 1;
-      border-radius: 12px;
-      border: 1px solid rgba(145,190,255,0.8);
-      background: radial-gradient(circle at top, #06132b, #02040a);
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      position: relative;
-    }
-    .screen-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: #7685c9;
-      margin-bottom: 6px;
-    }
-    .screen-body {
-      flex: 1;
-      border-radius: 10px;
-      border: 1px solid rgba(90,160,255,0.6);
-      background:
-        repeating-linear-gradient(
-          to bottom,
-          rgba(0,255,200,0.15),
-          rgba(0,255,200,0.15) 1px,
-          rgba(3,10,20,1) 1px,
-          rgba(3,10,20,1) 3px
-        );
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #9be7ff;
-      text-shadow: 0 0 4px rgba(0,255,200,0.8);
-      font-size: 12px;
-    }
-    .scan-line {
-      position: absolute;
-      left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(0,255,200,1), transparent);
-      animation: scan 2s linear infinite;
-    }
-    .scan-noise {
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-      background-size: 100% 2px, 2px 100%;
-      opacity: 0.2;
-      pointer-events: none;
-    }
-    .silhouette {
-      width: 74%;
-      height: 74%;
-      border-radius: 52% 48% 55% 45%;
-      border: 2px solid rgba(0,255,200,0.6);
-      box-shadow: 0 0 35px rgba(0,255,200,0.7);
-      position: relative;
-      background: radial-gradient(circle at 50% 36%, rgba(0,255,200,0.35), rgba(3,10,20,0.7) 60%);
-      overflow: hidden;
-    }
-    .silhouette::before {
-      content: "";
-      position: absolute;
-      inset: 12%;
-      border-radius: 45% 45% 58% 52%;
-      border: 2px solid rgba(0,255,200,0.45);
-      box-shadow: 0 0 25px rgba(0,255,200,0.9);
-      transform: rotate(-8deg);
-      opacity: 0.8;
-    }
-    .silhouette::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 40%, rgba(0,255,200,0.18), transparent 55%);
-      mix-blend-mode: screen;
-      opacity: 0.7;
-    }
-    .silhouette-image {
-      position: absolute;
-      inset: 6% 6% 8% 6%;
-      width: 88%;
-      height: 86%;
-      object-fit: contain;
-      mix-blend-mode: screen;
-      opacity: 0.95;
-      filter: drop-shadow(0 0 18px rgba(0,255,200,0.85)) contrast(1.25) saturate(1.3);
-      transition: opacity .2s ease-out;
-      pointer-events: none;
-    }
-    .silhouette .tail {
-      display: none;
-      pointer-events: none;
-    }
-
-    /* 物种差异化轮廓 */
-    .silhouette.cat {
-      border-radius: 58% 42% 62% 38%;
-      background: radial-gradient(circle at 50% 32%, rgba(0,255,200,0.5), rgba(3,10,20,0.8) 58%);
-    }
-    .silhouette.cat::before {
-      border-radius: 52% 48% 70% 30%;
-      transform: rotate(-4deg);
-    }
-    .silhouette.cat::after {
-      background:
-        radial-gradient(circle at 68% 62%, rgba(0,255,200,0.4), transparent 40%),
-        linear-gradient(120deg, rgba(0,255,200,0.6), transparent 65%);
-      border-radius: 60% 40% 55% 45%;
-    }
-    .silhouette.cat .tail {
-      position: absolute;
-      width: 32%;
-      height: 8%;
-      background: linear-gradient(90deg, rgba(0,255,200,0.7), transparent);
-      border-radius: 999px;
-      bottom: 20%;
-      right: -8%;
-      box-shadow: 0 0 14px rgba(0,255,200,0.7);
-      transform: rotate(22deg);
-      opacity: 0.8;
-    }
-
-    .silhouette.monkey {
-      border-radius: 46% 54% 68% 32%;
-      background: radial-gradient(circle at 50% 30%, rgba(0,255,200,0.45), rgba(3,10,20,0.82) 60%);
-    }
-    .silhouette.monkey::before {
-      border-radius: 40% 60% 64% 36%;
-      transform: rotate(-12deg);
-    }
-    .silhouette.monkey::after {
-      background:
-        radial-gradient(ellipse at 50% 72%, rgba(0,255,200,0.45), transparent 48%),
-        radial-gradient(circle at 52% 32%, rgba(0,255,200,0.22), transparent 45%);
-    }
-    .silhouette.monkey .tail {
-      position: absolute;
-      width: 54%;
-      height: 10%;
-      background: linear-gradient(90deg, rgba(0,255,200,0.6), transparent);
-      border-radius: 999px;
-      bottom: 26%;
-      right: -18%;
-      box-shadow: 0 0 14px rgba(0,255,200,0.7);
-      transform: rotate(-12deg) scaleX(1.2);
-      opacity: 0.75;
-    }
-
-    .silhouette.human {
-      border-radius: 38% 38% 54% 54%;
-      background: radial-gradient(circle at 50% 28%, rgba(0,255,200,0.48), rgba(3,10,20,0.85) 64%);
-    }
-    .silhouette.human::before {
-      border-radius: 40% 40% 58% 58%;
-      transform: rotate(-2deg);
-    }
-    .silhouette.human::after {
-      background:
-        radial-gradient(ellipse at 50% 70%, rgba(0,255,200,0.3), transparent 52%),
-        radial-gradient(circle at 50% 22%, rgba(0,255,200,0.3), transparent 36%);
-    }
-    .silhouette.human .tail { display: none; }
-
-    /* 动作状态 */
-    .motion-approach { animation: approach 3.8s ease-in-out; }
-    .motion-retreat { animation: retreat 3.6s ease-in-out; }
-    .motion-pace { animation: pace 4s ease-in-out; }
-
-    /* 实验舱预览网格 */
-    .preview-grid {
-      position: absolute;
-      inset: 6px;
-      padding: 6px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-      z-index: 2;
-    }
-    .preview-card {
-      border: 1px solid rgba(135,175,255,0.9);
-      border-radius: 10px;
-      background: radial-gradient(circle at top, rgba(20,50,110,0.9), rgba(3,7,18,0.9));
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: stretch;
-      cursor: pointer;
-      transition: all .18s ease-out;
-      position: relative;
-      overflow: hidden;
-    }
-    .preview-card:hover {
-      box-shadow: 0 0 10px rgba(130,175,255,0.9);
-      transform: translateY(-2px);
-      border-color: rgba(255,255,255,0.9);
-    }
-    .preview-thumb {
-      width: 54px;
-      height: 54px;
-      border-radius: 8px;
-      object-fit: cover;
-      border: 1px solid rgba(130,175,255,0.7);
-      background: rgba(0,255,200,0.08);
-      mix-blend-mode: screen;
-    }
-    .preview-mini {
-      position: relative;
-      flex: 1;
-      min-height: 120px;
-      border-radius: 8px;
-      overflow: hidden;
-      background: radial-gradient(circle at top, rgba(10,20,50,0.8), rgba(2,5,12,0.95));
-      border: 1px solid rgba(110,160,240,0.5);
-    }
-    .preview-mini.preview-motion-approach { animation: previewApproach 9s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
-    .preview-mini.preview-motion-retreat { animation: previewRetreat 8.5s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
-    .preview-mini.preview-motion-pace { animation: previewPace 10s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
-    .preview-mini .preview-bg {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 88%;
-      height: 88%;
-      transform: translate(-50%, -50%) scale(0.9);
-      object-fit: contain;
-      object-position: center;
-      opacity: 0.42;
-      mix-blend-mode: screen;
-      filter: drop-shadow(0 0 16px rgba(0,255,200,0.8)) saturate(1.2);
-      pointer-events: none;
-    }
-    .preview-card:hover .preview-bg { opacity: 0.65; }
-    @keyframes previewApproach {
-      0% { transform: scale(0.995); opacity: 0.94; box-shadow: 0 0 0 rgba(0,255,200,0.08); }
-      50% { transform: scale(1.01); opacity: 1; box-shadow: 0 0 10px rgba(0,255,200,0.18); }
-      100% { transform: scale(0.997); opacity: 0.95; box-shadow: 0 0 0 rgba(0,255,200,0.08); }
-    }
-    @keyframes previewRetreat {
-      0% { transform: scale(1); opacity: 0.94; filter: blur(0); }
-      50% { transform: scale(0.985); opacity: 0.88; filter: blur(0.15px); }
-      100% { transform: scale(0.995); opacity: 0.93; filter: blur(0); }
-    }
-    @keyframes previewPace {
-      0% { transform: scale(0.995); }
-      30% { transform: scale(1.007); }
-      65% { transform: scale(0.992); }
-      100% { transform: scale(1); }
-    }
-    .preview-mini .preview-scan {
-      position: absolute;
-      left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, rgba(0,255,200,0.8), transparent);
-      animation: scan 2.6s linear infinite;
-      opacity: 0.6;
-    }
-    .preview-mini .preview-noise {
-      position: absolute;
-      inset: 0;
-      background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-      background-size: 100% 2px, 2px 100%;
-      opacity: 0.18;
-      pointer-events: none;
-    }
-    .preview-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      font-size: 10px;
-      color: #cfe5ff;
-      position: relative;
-      z-index: 1;
-    }
-    .preview-id { letter-spacing: 0.12em; text-transform: uppercase; color: #8fa9ff; }
-    .preview-name { font-size: 12px; color: #e9f3ff; }
-    .preview-stage { color: #9bdfff; }
-    .preview-empty { justify-content: center; color: #7f9bd6; }
-
-    @keyframes approach {
-      0% { transform: translateY(6px) scale(0.9); opacity: 0.75; filter: blur(0px); }
-      50% { transform: translateY(-2px) scale(1.08); opacity: 1; filter: drop-shadow(0 0 18px rgba(0,255,200,0.9)); }
-      100% { transform: translateY(0) scale(1); opacity: 0.95; }
-    }
-    @keyframes retreat {
-      0% { transform: translateY(-2px) scale(1); opacity: 0.95; }
-      50% { transform: translateY(10px) scale(0.86); opacity: 0.65; filter: blur(1px); }
-      100% { transform: translateY(4px) scale(0.92); opacity: 0.78; }
-    }
-    @keyframes pace {
-      0% { transform: translateX(-8px) scale(0.95); }
-      35% { transform: translateX(6px) translateY(-2px) scale(0.98); }
-      65% { transform: translateX(-4px) translateY(2px) scale(0.93); }
-      100% { transform: translateX(5px) scale(0.96); }
-    }
-    .screen-footer {
-      position: absolute;
-      bottom: 6px;
-      left: 10px;
-      right: 10px;
-      font-size: 10px;
-      color: #a7dfff;
-      display: flex;
-      justify-content: space-between;
-    }
-    .monitor-info {
-      margin-top: 6px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-      font-size: 10px;
-    }
-    .info-card {
-      border-radius: 8px;
-      border: 1px solid rgba(130,170,255,0.8);
-      background: radial-gradient(circle at top, rgba(20,35,95,0.9), rgba(4,8,20,0.98));
-      padding: 5px 6px;
-    }
-    .info-label {
-      font-size: 10px;
-      color: #8ea1ff;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      margin-bottom: 3px;
-    }
-    .info-value {
-      font-size: 13px;
-      color: #e7efff;
-    }
-    .info-desc {
-      font-size: 10px;
-      margin-top: 2px;
-      color: #91a2f0;
-    }
-
-    .vitals {
-      margin-top: 4px;
-      padding: 5px 6px;
-      border-radius: 9px;
-      border: 1px solid rgba(130,170,255,0.9);
-      background: radial-gradient(circle at top, rgba(20,40,100,0.95), rgba(3,7,18,0.98));
-      font-size: 10px;
-    }
-    .vitals-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 4px;
-      align-items: center;
-    }
-    .vital-label {
-      width: 70px;
-      color: #98adff;
-    }
-    .vital-bar {
-      flex: 1;
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(9,14,30,0.9);
-      overflow: hidden;
-    }
-    .vital-fill {
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #38e9b5, #8ef5ff);
-      width: 40%;
-      transition: width .4s ease-out;
-    }
-    .vital-fill.alert {
-      background: linear-gradient(90deg, #ff6b81, #ffd4a5);
-      box-shadow: 0 0 8px rgba(255,107,129,0.8);
-    }
-    .vital-fill.red {
-      background: linear-gradient(90deg, #ff6b81, #ffe4a5);
-    }
-    .vital-value {
-      width: 60px;
-      text-align: right;
-      color: #dfe7ff;
-    }
-    .monitor-buttons {
-      margin-top: 4px;
-      display: flex;
-      gap: 6px;
-      justify-content: flex-end;
-    }
-    .btn {
-      padding: 4px 8px;
-      font-size: 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(140,180,255,0.9);
-      background: radial-gradient(circle at top, rgba(40,70,150,0.95), rgba(4,7,18,1));
-      color: #e7efff;
-      cursor: pointer;
-    }
-    .btn:hover {
-      box-shadow: 0 0 8px rgba(140,180,255,0.9);
-      transform: translateY(-1px);
-    }
-
-    /* 右侧日志 */
-    .log-panel {
-      padding: 8px;
-      background: radial-gradient(circle at right top, rgba(140,190,255,0.25), #050711 65%);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .log-header { display: flex; align-items: center; justify-content: space-between; }
-    .log-title {
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: #d0ddff;
-    }
-    .log-sub {
-      font-size: 10px;
-      color: #92a4ff;
-    }
-    .log-list {
-      flex: 1;
-      border-radius: 10px;
-      border: 1px solid rgba(135,175,255,0.9);
-      background: radial-gradient(circle at top, rgba(14,32,86,0.9), rgba(3,7,20,0.98));
-      padding: 6px 7px;
-      overflow-y: auto;
-      font-size: 10px;
-    }
-    .btn-log {
-      padding: 4px 8px;
-      font-size: 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(140,180,255,0.8);
-      background: rgba(30,60,120,0.8);
-      color: #e7efff;
-      cursor: pointer;
-    }
-    .btn-log:hover {
-      box-shadow: 0 0 8px rgba(140,180,255,0.9);
-      transform: translateY(-1px);
-    }
-    .log-entry {
-      border-bottom: 1px dashed rgba(100,135,220,0.6);
-      padding-bottom: 4px;
-      margin-bottom: 4px;
-    }
-    .log-entry:last-child { border-bottom: none; }
-    .log-meta {
-      display: flex;
-      justify-content: space-between;
-      color: #8fa1f0;
-      font-size: 10px;
-      margin-bottom: 2px;
-    }
-    .log-text {
-      color: #dde6ff;
-      white-space: pre-line;
-    }
-    .log-entry.alert .log-text { color: #ffb3c2; }
-
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(6,9,22,0.9); }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(130,165,245,0.8);
-      border-radius: 999px;
-    }
-    .hidden { display: none !important; }
-
-    @keyframes scan {
-      0% { transform: translateY(-100%); opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { transform: translateY(100%); opacity: 0; }
-    }
-
-    @media (max-width: 900px) {
-      body { overflow: auto; }
-      .main {
-        display: block;
-        height: auto;
-      }
-      .sidebar {
-        border-bottom: 1px solid rgba(120,170,255,0.3);
-        border-right: none;
-      }
-      .monitor, .log-panel {
-        height: 360px;
-      }
-    }
-
-    @media (max-width: 1200px) {
-      body { font-size: 13px; }
-      header { height: 44px; padding: 5px 10px; }
-      .main { grid-template-columns: 160px minmax(0, 1.7fr) minmax(0, 1.1fr); }
-      .monitor, .log-panel, .sidebar { padding: 7px; }
-      .monitor-screen { padding: 5px; }
-      .monitor-info { gap: 5px; }
-      .vitals { padding: 4px 5px; }
-    }
-  </style>
+  <link rel="stylesheet" href="subject_monitor.css">
 </head>
 <body>
 <div class="app">
   <header>
     <div class="title">BNU · <span>SUBJECT MONITOR</span></div>
+    <div class="time-bar">
+      <span class="time-label" id="time-display">第 1 天 · 00:00</span>
+      <button class="btn-time" id="btn-next-day">下一天</button>
+    </div>
     <div class="status" id="header-status">
       当前实验体：——
     </div>
@@ -656,6 +37,7 @@
         <div class="screen-body" id="screen-body">
           <div class="scan-line"></div>
           <div class="scan-noise"></div>
+          <div class="lost-overlay" id="lost-overlay">已丢失观测结果</div>
           <div class="preview-grid" id="preview-grid"></div>
           <div class="silhouette" id="silhouette">
             <img class="silhouette-image" id="silhouette-img" alt="实验体红外轮廓" />
@@ -736,7 +118,7 @@
   const subjects = [
     {
       id: "S-01",
-      name: "猫（RW-12M）",
+      name: "猫",
       species: "Felis catus",
       stage: "异化中",
       risk: "高",
@@ -748,7 +130,7 @@
     },
     {
       id: "S-07",
-      name: "猕猴（RW-11M）",
+      name: "猕猴",
       species: "Macaca mulatta",
       stage: "前异化",
       risk: "中",
@@ -760,7 +142,7 @@
     },
     {
       id: "S-13",
-      name: "人类志愿者（RW-10M）",
+      name: "人类志愿者",
       species: "Homo sapiens",
       stage: "潜伏期",
       risk: "极高",
@@ -798,8 +180,12 @@
   const silhouetteImg = document.getElementById("silhouette-img");
   const previewGrid = document.getElementById("preview-grid");
   const btnAlertLog = document.getElementById("btn-alert-log");
-  const MAX_LOGS = 20;
+  const timeDisplay = document.getElementById("time-display");
+  const btnNextDay = document.getElementById("btn-next-day");
+  const lostOverlay = document.getElementById("lost-overlay");
+  const MAX_LOGS = 18;
   const SAMPLE_COOLDOWN = 5000;
+  const colorLabels = { white: "白色", orange: "橙色", red: "红色" };
   let motionTimer = null;
   let previewMotionHandles = [];
   let vitalsTimer = null;
@@ -810,6 +196,58 @@
   const logs = [];
   let alertView = false;
   let lastSampleTs = 0;
+  const gameTime = { day: 1, minutes: 0 }; // 1 real second = 1 game minute
+  let timeTimer = null;
+  const dailyPools = {
+    white: [
+      "睡眠规律，呼吸均匀。",
+      "进食正常，无挑食行为。",
+      "对光线变化反应正常。",
+      "保持常规巡视步频。",
+      "对监控镜头无异常注视。",
+      "体表温度稳定。",
+      "饮水量符合记录标准。",
+      "坐卧姿态自然，关节灵活。",
+      "对声音刺激反应适中。",
+      "未出现过度抓挠或舔舐。",
+      "呼吸节律平稳，无喘息。",
+      "心率波动在日常范围。",
+      "自主活动时间正常分布。",
+      "与饲料互动方式常规。",
+      "嗅探行为频率正常。",
+      "对环境布置无破坏倾向。",
+      "眼部反光正常，无异常闪烁。",
+      "肌肉张力平衡，未见僵硬。",
+      "对气味刺激无过激反应。",
+      "保持日常清洁习惯。"
+    ],
+    orange: [
+      "出现短暂停滞，凝视角落数秒。",
+      "进食速度偏慢，似在聆听。",
+      "对镜头有轻微回避动作。",
+      "呼吸略微急促后恢复正常。",
+      "嗅探空气时间延长。",
+      "尾部/四肢出现轻微抖动。",
+      "短时对墙面摩擦，随后停止。",
+      "盯着空无一物的区域发呆。",
+      "自主活动减少，更多时间静坐。",
+      "对常规指令响应延迟。"
+    ],
+    red: [
+      "朝空无一物的点低语，声源不明。",
+      "眼部反光异常，似有双层映射。",
+      "肢体动作出现倒置镜像式同步。",
+      "对监控镜头做出“禁止”手势。",
+      "影子与动作不同步，延迟数秒。"
+    ]
+  };
+  const dailyQueues = { white: [], orange: [], red: [] };
+  const testSeq = { step: 0 };
+
+  function isSubjectLost(subj) {
+    if (!subj) return false;
+    return (subj.shift || 0) >= 100;
+  }
 
   // 渲染左侧实验体列表
   function renderSubjectList() {
@@ -830,6 +268,7 @@
 
   function selectSubject(idx) {
     currentSubject = subjects[idx];
+    testSeq.step = 0;
     previewGrid.style.display = "none";
     silhouetteEl.style.display = "flex";
     previewMotionHandles.forEach(h => clearTimeout(h));
@@ -853,7 +292,8 @@
     infoSpeciesEl.textContent = `物种：${currentSubject.species}`;
     infoStageEl.textContent = currentSubject.stage;
     infoRiskEl.textContent = `风险：${currentSubject.risk}`;
-    infoNoteEl.textContent = currentSubject.note;
+    updateDailyStatusUI();
+    updateLostOverlay();
 
     // 根据实验体调整“轮廓光圈”大小
     setSilhouetteAppearance(currentSubject.id);
@@ -885,6 +325,10 @@
   // 随机生命体征
   function randomizeVitals(resetShift = false) {
     if (!currentSubject) return;
+    if (isSubjectLost(currentSubject)) {
+      updateLostOverlay();
+      return;
+    }
     // 物种区间
     const ranges = {
       "S-01": { heart: [120, 170], brain: [55, 82] }, // 猫
@@ -914,8 +358,9 @@
     vitalHeartText.textContent = hr + " bpm";
     vitalBrainText.textContent = brain + "%";
     vitalShiftText.textContent = currentShift.toFixed(1) + "%";
+    updateLostOverlay();
 
-    const logText = `生命体征更新：心率 ${hr} bpm${heartAlert ? "（异常）" : ""}，脑电活动 ${brain}%${brainAlert ? "（异常）" : ""}，异化进度 ${currentShift}%。`;
+    const logText = `生命体征更新：心率 ${hr} bpm${heartAlert ? "（异常）" : ""}，脑电活动 ${brain}%${brainAlert ? "（异常）" : ""}，异化进度 ${currentShift.toFixed(1)}%。`;
     const alertFlag = heartAlert || brainAlert;
     addLog(logText, true, alertFlag);
   }
@@ -935,6 +380,8 @@
       const body = document.createElement("div");
       body.className = "log-text";
       body.textContent = item.text + (item.light ? "" : "\n");
+      if (item.color === "orange") body.style.color = "#ffcb8a";
+      if (item.color === "red") body.style.color = "#ff9bb0";
 
       entry.appendChild(meta);
       entry.appendChild(body);
@@ -943,11 +390,10 @@
     logListEl.scrollTop = logListEl.scrollHeight;
   }
 
-  function addLog(text, light = false, alert = false) {
-    const now = new Date();
-    const ts = now.toLocaleTimeString("zh-CN", { hour12: false });
+  function addLog(text, light = false, alert = false, color = null) {
+    const ts = formatGameTime();
     const subjectId = currentSubject ? currentSubject.id : "——";
-    const logItem = { ts, subject: subjectId, text, alert, light };
+    const logItem = { ts, subject: subjectId, text, alert, light, color };
 
     logs.push(logItem);
     if (logs.length > MAX_LOGS) {
@@ -960,12 +406,30 @@
     renderLogList(alertView ? alertLogs : logs);
   }
 
+  function addLogForSubject(subjectId, text, alert = false, color = null) {
+    const ts = formatGameTime();
+    const logItem = { ts, subject: subjectId, text, alert, light: false, color };
+    logs.push(logItem);
+    if (logs.length > MAX_LOGS) logs.shift();
+    if (alert) alertLogs.push(logItem);
+    if (!alertView) {
+      renderLogList(logs);
+    } else {
+      renderLogList(alertLogs);
+    }
+  }
+
   // 绑定按钮
   btnSample.addEventListener("click", () => {
     if (!currentSubject) {
       alert("请先选择一个实验体。");
       return;
     }
+    if (isSubjectLost(currentSubject)) {
+      alert("观测结果已丢失。");
+      return;
+    }
+    handleTestSequence("sample");
     const now = Date.now();
     if (now - lastSampleTs < SAMPLE_COOLDOWN) {
       return;
@@ -983,6 +447,7 @@
     currentSubject.shift = currentShift;
     vitalShiftFill.style.width = Math.min(currentShift, 100) + "%";
     vitalShiftText.textContent = currentShift.toFixed(1) + "%";
+    updateLostOverlay();
 
     addLog(
       `采集数据：记录 ${currentSubject.id} 的当前姿态与行为。\n备注：红外轮廓在摄像头外缘停留时间异常延长。${inc > 0 ? ` 异化进度 +${inc.toFixed(1)}%` : ""}`,
@@ -996,6 +461,11 @@
       alert("请先选择一个实验体。");
       return;
     }
+    if (isSubjectLost(currentSubject)) {
+      alert("观测结果已丢失。");
+      return;
+    }
+    handleTestSequence("random");
     randomizeVitals();
     startSilhouetteMotion(true);
   });
@@ -1004,6 +474,128 @@
     alertView = !alertView;
     btnAlertLog.textContent = alertView ? "返回监控日志" : "异常日志";
     renderLogList(alertView ? alertLogs : logs);
+  });
+
+  // 时间系统
+  function pad(num) {
+    return num.toString().padStart(2, "0");
+  }
+  function formatGameTime() {
+    const hours = Math.floor(gameTime.minutes / 60);
+    const mins = gameTime.minutes % 60;
+    return `第 ${gameTime.day} 天 · ${pad(hours)}:${pad(mins)}`;
+  }
+  function updateTimeDisplay() {
+    if (timeDisplay) timeDisplay.textContent = formatGameTime();
+  }
+  function advanceMinutes(minutes = 1) {
+    gameTime.minutes += minutes;
+    let dayChanged = false;
+    while (gameTime.minutes >= 1440) {
+      gameTime.minutes -= 1440;
+      gameTime.day += 1;
+      dayChanged = true;
+    }
+    if (dayChanged) {
+      logs.length = 0;
+      alertLogs.length = 0;
+      renderLogList([]);
+      assignDailyStatuses(true);
+      addLog(`时间推进到第 ${gameTime.day} 天 00:00。`, true);
+    }
+    updateTimeDisplay();
+  }
+  function startTimeSystem() {
+    updateTimeDisplay();
+    clearInterval(timeTimer);
+    timeTimer = setInterval(() => advanceMinutes(1), 1000);
+  }
+
+  // 日常状态池
+  function shuffle(arr) {
+    return arr
+      .map(value => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
+  }
+  function refillQueue(color) {
+    dailyQueues[color] = shuffle(dailyPools[color]);
+  }
+  function drawStatus(color) {
+    if (!dailyQueues[color] || dailyQueues[color].length === 0) {
+      refillQueue(color);
+    }
+    return dailyQueues[color].shift();
+  }
+  function rollColor() {
+    const r = Math.random();
+    if (r < 0.7) return "white";
+    if (r < 0.9) return "orange";
+    return "red";
+  }
+  function assignDailyStatuses(logNow = true) {
+    subjects.forEach(s => {
+      const color = rollColor();
+      const text = drawStatus(color);
+      s.dailyStatus = { color, text };
+      if (isSubjectLost(s)) return;
+      if (currentSubject && currentSubject.id === s.id) {
+        updateDailyStatusUI();
+      }
+      if (logNow) {
+        const alertFlag = color === "red";
+        addLogForSubject(s.id, `日常状态：${text}`, alertFlag, color);
+      }
+    });
+  }
+  function updateDailyStatusUI() {
+    if (!currentSubject) return;
+    if (isSubjectLost(currentSubject)) {
+      infoNoteEl.textContent = `${currentSubject.note}\n今日状态：已丢失观测结果`;
+      return;
+    }
+    const status = currentSubject.dailyStatus;
+    const colorLabel = status ? colorLabels[status.color] : "—";
+    const desc = status ? status.text : "未记录。";
+    infoNoteEl.textContent = `${currentSubject.note}\n今日状态：${desc}`;
+  }
+
+  function handleTestSequence(action) {
+    const seq = ["sample", "sample", "random", "random", "random", "sample"];
+    if (action === seq[testSeq.step]) {
+      testSeq.step += 1;
+      if (testSeq.step >= seq.length) {
+        if (currentSubject) {
+          currentShift = 100;
+          currentSubject.shift = 100;
+          vitalShiftFill.style.width = "100%";
+          vitalShiftText.textContent = "100.0%";
+          updateLostOverlay();
+          addLog("测试触发：快速置满异化进度至 100%。", true, true);
+          updateDailyStatusUI();
+        }
+        testSeq.step = 0;
+      }
+    } else {
+      testSeq.step = action === "sample" ? 1 : 0;
+    }
+  }
+
+  function updateLostOverlay() {
+    const lost = currentSubject && currentShift >= 100;
+    if (lostOverlay) {
+      lostOverlay.classList.toggle("active", !!lost);
+    }
+  }
+  btnNextDay.addEventListener("click", () => {
+    gameTime.day += 1;
+    gameTime.minutes = 0;
+    updateTimeDisplay();
+    logs.length = 0;
+    alertLogs.length = 0;
+    renderLogList([]);
+    assignDailyStatuses(true);
+    addLog(`时间跳转到第 ${gameTime.day} 天 00:00。`, true);
   });
 
   function renderPreviewGrid() {
@@ -1099,6 +691,8 @@
   renderSubjectList();
   renderPreviewGrid();
   showPreview();
+  startTimeSystem();
+  assignDailyStatuses(true);
   addLog("系统启动：展示实验舱预览，等待选择实验体。");
 </script>
 </body>
