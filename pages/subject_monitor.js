@@ -24,6 +24,7 @@ const vitalShiftText = document.getElementById("vital-shift-text");
 const logListEl = document.getElementById("log-list");
 const btnSample = document.getElementById("btn-sample");
 const btnRandom = document.getElementById("btn-random");
+const btnPreview = document.getElementById("btn-preview");
 const silhouetteEl = document.getElementById("silhouette");
 const silhouetteImg = document.getElementById("silhouette-img");
 const previewGrid = document.getElementById("preview-grid");
@@ -49,6 +50,7 @@ const dailyQueues = { white: [], orange: [], red: [] };
 const testSeq = { step: 0 };
 const statusColors = { white: "#91a2f0", orange: "#ffcb8a", red: "#ff9bb0" };
 const defaultInfoColor = "#91a2f0";
+const defaultPreviewStageColor = "#9bdfff";
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -293,6 +295,10 @@ btnAlertLog.addEventListener("click", () => {
   renderLogList(alertView ? alertLogs : logs);
 });
 
+btnPreview.addEventListener("click", () => {
+  showPreview();
+});
+
 btnNextDay.addEventListener("click", () => {
   pendingDayChangeReason = "manual";
   time.nextDay();
@@ -333,6 +339,7 @@ function assignDailyStatuses(logNow = true) {
       addLogForSubject(s.id, `日常状态：${text}`, alertFlag, color);
     }
   });
+  updatePreviewStatusColors();
 }
 function updateDailyStatusUI() {
   if (!currentSubject) return;
@@ -380,6 +387,7 @@ function renderPreviewGrid() {
   subjects.forEach((s, index) => {
     const card = document.createElement("div");
     card.className = "preview-card";
+    card.dataset.id = s.id;
     card.innerHTML = `
       <div class="preview-mini">
         <div class="preview-scan"></div>
@@ -394,12 +402,35 @@ function renderPreviewGrid() {
     `;
     card.addEventListener("click", () => selectSubject(index));
     previewGrid.appendChild(card);
+    applyPreviewCardStatus(card, s.dailyStatus);
   });
   const placeholder = document.createElement("div");
   placeholder.className = "preview-card preview-empty";
   placeholder.innerHTML = `<div class="preview-meta">备用遮蔽舱<br>待分配实验体</div>`;
   previewGrid.appendChild(placeholder);
   startPreviewMotion();
+}
+
+function applyPreviewCardStatus(card, status) {
+  const stageEl = card.querySelector(".preview-stage");
+  if (status && statusColors[status.color]) {
+    const color = statusColors[status.color];
+    card.style.borderColor = color;
+    card.style.boxShadow = `0 0 10px ${color}b3`;
+    if (stageEl) stageEl.style.color = color;
+  } else {
+    card.style.borderColor = "";
+    card.style.boxShadow = "";
+    if (stageEl) stageEl.style.color = defaultPreviewStageColor;
+  }
+}
+
+function updatePreviewStatusColors() {
+  const cards = previewGrid.querySelectorAll(".preview-card[data-id]");
+  cards.forEach(card => {
+    const subj = subjects.find(s => s.id === card.dataset.id);
+    applyPreviewCardStatus(card, subj?.dailyStatus);
+  });
 }
 
 function showPreview() {
@@ -428,6 +459,7 @@ function showPreview() {
   vitalHeartText.textContent = "——";
   vitalBrainText.textContent = "——";
   vitalShiftText.textContent = "0%";
+  updatePreviewStatusColors();
   startPreviewMotion();
 }
 
