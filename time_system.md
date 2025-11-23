@@ -1,10 +1,10 @@
 # 时间系统说明
 
-- **显示位置**：所有页面顶部居中时间栏（时间标签 + “下一天”按钮）。在 `subject_monitor.html` header 中实现。
+- **显示位置**：所有页面顶部居中时间栏（时间标签 + “下一天”按钮）。在 `subject_monitor.html` header 中实现，逻辑由 `modules/time.js` 提供。
 - **时间节奏**：1 秒（真实时间）= 1 分钟（游戏时间）。初始为第 1 天 00:00。
 - **自动推进**：定时器每秒推进 1 分钟，累积到 24 小时自动进位到下一天。
 - **手动跳日**：点击“下一天”按钮直接跳到下一天 00:00，并记录一条日志。
 - **时间格式**：`第 N 天 · HH:MM`，小时与分钟为两位数。
 - **与监控同步**：监控日志时间戳使用游戏时间（而非系统实时时间）；跨系统共享时间状态。日切/跳日会触发实验体“日常状态”重置与日志记录（见 `subject_monitor.md`）。
-- **状态存储**：`gameTime = { day: number, minutes: number }`；时间显示由 `formatGameTime()` / `updateTimeDisplay()` 输出。
-- **扩展建议**：可在其他系统读取 `gameTime` 或监听跳日事件，以同步剧情、事件刷新等。 ***
+- **状态存储**：`gameTime = { day: number, minutes: number }`；使用 `createTimeSystem()` 返回的 `format()` 获取展示字符串，`onTick`/`onDayChange` 订阅时间变更。
+- **扩展建议**：在其他系统中复用 `modules/time.js`，监听跳日事件以同步剧情、事件刷新等。 ***
