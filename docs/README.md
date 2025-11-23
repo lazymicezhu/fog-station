@@ -14,6 +14,7 @@
 - **架构概览**：`docs/architecture.md`
 - **系统文档**：`docs/systems/subject_monitor.md`、`docs/systems/time_system.md`
 - **世界观/设定**：`docs/world/世界观.md`
+- **新手教程**：`docs/tutorial.md`
 - **模板**：`docs/templates/doc_template.md`（新文档可复制使用）
 
 ## 维护约定

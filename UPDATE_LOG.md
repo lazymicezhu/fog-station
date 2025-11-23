@@ -57,3 +57,55 @@
 
 ## 2025-11-23 20:47 — 预览内框精简
 - 移除预览舱卡内部框线，仅保留可染色的外层卡框，视觉更简洁（`subject_monitor.css`）。
+
+## 2025-11-23 20:52 — 新手教程引导
+- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`subject_monitor.html`/`pages/subject_monitor.js`/`subject_monitor.css`）。
+- 文档同步：`docs/systems/subject_monitor.md` 补充新手教程行为。
+
+## 2025-11-23 20:59 — 教程高亮可读性
+- 调整新手教程高亮遮罩为透明镂空，确保被高亮区域文本清晰可见（`subject_monitor.css`）。
+
+## 2025-11-23 21:00 — 教程提示框高亮
+- 教程提示框增加描边与光晕，提升对比度与可读性（`subject_monitor.css`）。
+
+## 2025-11-23 21:04 — 教程提示框提亮
+- 提亮教程提示框背景、描边与文字颜色，确保遮罩下内容清晰可读（`subject_monitor.css`）。
+
+## 2025-11-23 21:03 — 教程提示无遮罩
+- 移除教程高亮的遮罩阴影，仅保留描边高亮，提示文字不再被遮挡（`subject_monitor.css`）。
+
+## 2025-11-23 21:05 — 教程遮罩调整
+- 仅保留整体遮罩使背景变暗，`guide-card` 和 `guide-highlight` 提升层级不被遮罩，突出提示内容与高亮区域（`subject_monitor.css`）。
+
+## 2025-11-23 21:07 — 教程高亮提亮
+- 保持背景遮罩变暗，但为高亮区域增加半透明底与更强光晕，确保高亮区域和提示文字清晰可见（`subject_monitor.css`）。
+
+## 2025-11-23 21:08 — 教程高亮透光
+- 降低整体遮罩透明度、移除高亮底色并强化光晕，保证左侧列表等被高亮区域更易看清（`subject_monitor.css`）。
+
+## 2025-11-23 21:11 — 教程遮罩镂空
+- 教程遮罩对高亮目标位置打孔（随目标动态调整），保证左侧列表等高亮区域完全不被遮挡，同时保持背景变暗（`subject_monitor.css`/`pages/subject_monitor.js`）。
+
+## 2025-11-23 21:12 — 教程遮罩修复
+- 补充遮罩元素引用（`guide-overlay`），修复教程初始化报错（`subject_monitor.html`/`pages/subject_monitor.js`）。
+
+## 2025-11-23 21:16 — 教程步骤联动
+- 选择实验体后自动推进新手教程到“等待异常”步骤（`pages/subject_monitor.js`），避免卡在 Step 1。
+
+## 2025-11-23 21:19 — 教程完善
+- 修复“下一步”无法从 Step 4 到 Step 5 的问题，统一用控制函数推进/回退（`pages/subject_monitor.js`）。
+- 新增 `docs/tutorial.md` 记录完整教程逻辑；`docs/README.md` 添加教程导航。
+
+## 2025-11-23 21:24 — 教程采集与按钮逻辑
+- Step 4 再次点击“采集数据”即可进入 Step 5，符合“采集至满”流程；Step 5 仅显示“上一步”“完成”按钮（`pages/subject_monitor.js`）。
+- 教程文档同步更新推进规则（`docs/tutorial.md`）。
+
+## 2025-11-23 21:26 — 教程高亮范围调整
+- Step 2/4 高亮区域限定为生命体征条（心率/脑电/异化），避免遮罩覆盖过大区域（`pages/subject_monitor.js`）。
+
+## 2025-11-23 21:29 — 教程完成条件补充
+- Step 5 下点击“快捷预览”将自动结束教程，除“完成”外的另一快速退出路径（`pages/subject_monitor.js`/`docs/tutorial.md`）。
+
+## 2025-11-23 21:31 — 采集冷却优化
+- 刷新生命体征后，下一次采集可跳过 5s 冷却限制（`pages/subject_monitor.js`）。
+- 文档同步：`docs/systems/subject_monitor.md` 说明冷却跳过规则。

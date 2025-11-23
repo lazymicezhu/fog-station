@@ -25,6 +25,14 @@ const logListEl = document.getElementById("log-list");
 const btnSample = document.getElementById("btn-sample");
 const btnRandom = document.getElementById("btn-random");
 const btnPreview = document.getElementById("btn-preview");
+const guideMask = document.getElementById("guide-mask");
+const guideOverlay = document.getElementById("guide-overlay");
+const guideCard = document.getElementById("guide-card");
+const guideStepText = document.getElementById("guide-step");
+const guideBodyText = document.getElementById("guide-text");
+const guidePrev = document.getElementById("guide-prev");
+const guideNext = document.getElementById("guide-next");
+const guideSkip = document.getElementById("guide-skip");
 const silhouetteEl = document.getElementById("silhouette");
 const silhouetteImg = document.getElementById("silhouette-img");
 const previewGrid = document.getElementById("preview-grid");
@@ -51,6 +59,9 @@ const testSeq = { step: 0 };
 const statusColors = { white: "#91a2f0", orange: "#ffcb8a", red: "#ff9bb0" };
 const defaultInfoColor = "#91a2f0";
 const defaultPreviewStageColor = "#9bdfff";
+let sampleCooldownBypass = false;
+let guideStepIndex = 0;
+let guideActive = false;
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -127,6 +138,9 @@ function selectSubject(idx) {
   vitalsTimer = setInterval(() => randomizeVitals(), 5000);
   addLog(`切换监控目标为 ${currentSubject.id}（${currentSubject.name}）。`);
   startSilhouetteMotion(true);
+  if (guideActive && guideStepIndex === 0) {
+    setGuideStep(1);
+  }
 }
 
 function setSilhouetteAppearance(id) {
@@ -224,6 +238,9 @@ function addLog(text, light = false, alert = false, color = null) {
   }
 
   renderLogList(alertView ? alertLogs : logs);
+  if (guideActive && guideStepIndex === 1 && (alert || text.includes("生命体征更新"))) {
+    setGuideStep(guideStepIndex + 1);
+  }
 }
 
 function addLogForSubject(subjectId, text, alert = false, color = null) {
@@ -250,10 +267,11 @@ btnSample.addEventListener("click", () => {
   }
   handleTestSequence("sample");
   const now = Date.now();
-  if (now - lastSampleTs < SAMPLE_COOLDOWN) {
+  if (!sampleCooldownBypass && now - lastSampleTs < SAMPLE_COOLDOWN) {
     return;
   }
   lastSampleTs = now;
+  sampleCooldownBypass = false;
 
   const alertFlag = heartAlert || brainAlert;
   let inc = 0;
@@ -273,6 +291,13 @@ btnSample.addEventListener("click", () => {
     false,
     alertFlag
   );
+  if (guideActive) {
+    if (guideStepIndex === 2) {
+      setGuideStep(guideStepIndex + 1);
+    } else if (guideStepIndex === 3) {
+      setGuideStep(guideStepIndex + 1);
+    }
+  }
 });
 
 btnRandom.addEventListener("click", () => {
@@ -287,6 +312,7 @@ btnRandom.addEventListener("click", () => {
   handleTestSequence("random");
   randomizeVitals();
   startSilhouetteMotion(true);
+  sampleCooldownBypass = true; // 刷新后下一次采集不受冷却限制
 });
 
 btnAlertLog.addEventListener("click", () => {
@@ -297,6 +323,19 @@ btnAlertLog.addEventListener("click", () => {
 
 btnPreview.addEventListener("click", () => {
   showPreview();
+  if (guideActive && guideStepIndex === 4) {
+    endGuide();
+  }
+});
+
+guidePrev?.addEventListener("click", () => {
+  guidePrevStep();
+});
+guideNext?.addEventListener("click", () => {
+  guideNextStep();
+});
+guideSkip?.addEventListener("click", () => {
+  endGuide();
 });
 
 btnNextDay.addEventListener("click", () => {
@@ -379,6 +418,9 @@ function updateLostOverlay() {
   const lost = currentSubject && currentShift >= 100;
   if (lostOverlay) {
     lostOverlay.classList.toggle("active", !!lost);
+  }
+  if (guideActive && guideStepIndex === 3 && lost) {
+    setGuideStep(guideStepIndex + 1);
   }
 }
 
@@ -497,9 +539,114 @@ function startPreviewMotion() {
   run();
 }
 
+// 新手教程
+const guideSteps = [
+  {
+    title: "STEP 1 · 选择实验体",
+    text: "先从左侧列表点选一个实验体，进入监控。",
+    target: () => subjectListEl
+  },
+  {
+    title: "STEP 2 · 等待异常",
+    text: "关注生命体征，心率/脑电出现红色时采集更易提升异化。\n也可以点击“刷新生命体征”加速触发。",
+    target: () => document.querySelector(".vitals")
+  },
+  {
+    title: "STEP 3 · 采集数据",
+    text: "出现异常后点击“采集数据”，可让异化进度提升。",
+    target: () => btnSample
+  },
+  {
+    title: "STEP 4 · 异化进度",
+    text: "继续等待异常并采集，直至异化达到 100% 将失去监控。",
+    target: () => document.querySelector(".vital-row-shift") || document.querySelector(".vitals")
+  },
+  {
+    title: "STEP 5 · 返回预览",
+    text: "可随时用“快捷预览”返回舱位总览，舱框颜色同步当日状态。",
+    target: () => btnPreview
+  }
+];
+let guideHighlight = null;
+
+function startGuide() {
+  guideActive = true;
+  guideStepIndex = 0;
+  if (guideMask) guideMask.hidden = false;
+  ensureHighlight();
+  setGuideStep(0);
+}
+
+function endGuide() {
+  guideActive = false;
+  guideStepIndex = 0;
+  if (guideMask) guideMask.hidden = true;
+  if (guideHighlight) guideHighlight.remove();
+}
+
+function guideNextStep() {
+  if (!guideActive) return;
+  if (guideStepIndex >= guideSteps.length - 1) {
+    endGuide();
+  } else {
+    setGuideStep(guideStepIndex + 1);
+  }
+}
+
+function guidePrevStep() {
+  if (!guideActive) return;
+  setGuideStep(guideStepIndex - 1);
+}
+
+function ensureHighlight() {
+  if (guideHighlight) return;
+  guideHighlight = document.createElement("div");
+  guideHighlight.className = "guide-highlight";
+  guideMask?.appendChild(guideHighlight);
+}
+
+function setGuideStep(step) {
+  if (!guideActive) return;
+  guideStepIndex = Math.max(0, Math.min(step, guideSteps.length - 1));
+  const cfg = guideSteps[guideStepIndex];
+  const target = cfg.target?.();
+  guideStepText.textContent = cfg.title;
+  guideBodyText.textContent = cfg.text;
+  guidePrev.disabled = guideStepIndex === 0;
+  guideNext.textContent = guideStepIndex === guideSteps.length - 1 ? "完成" : "下一步";
+  guidePrev.style.display = "inline-flex";
+  guideNext.style.display = guideStepIndex === guideSteps.length - 1 ? "inline-flex" : "inline-flex";
+  guideSkip.style.display = guideStepIndex === guideSteps.length - 1 ? "none" : "inline-flex";
+
+  if (target && guideHighlight) {
+    let rect = target.getBoundingClientRect();
+    // 针对 Step 2/4 仅高亮生命体征区域（心率/脑电/异化）
+    if ((guideStepIndex === 1 || guideStepIndex === 3) && target === document.querySelector(".vitals")) {
+      const bars = document.querySelector(".vitals");
+      if (bars) rect = bars.getBoundingClientRect();
+    }
+    guideHighlight.style.top = `${rect.top - 6 + window.scrollY}px`;
+    guideHighlight.style.left = `${rect.left - 6 + window.scrollX}px`;
+    guideHighlight.style.width = `${rect.width + 12}px`;
+    guideHighlight.style.height = `${rect.height + 12}px`;
+    guideHighlight.style.display = "block";
+    const r = Math.max(rect.width, rect.height) / 2 + 16;
+    const cx = rect.left + rect.width / 2 + window.scrollX;
+    const cy = rect.top + rect.height / 2 + window.scrollY;
+    guideOverlay?.style.setProperty("--guide-hole-x", `${cx}px`);
+    guideOverlay?.style.setProperty("--guide-hole-y", `${cy}px`);
+    guideOverlay?.style.setProperty("--guide-hole-r", `${r}px`);
+  } else if (guideHighlight) {
+    guideHighlight.style.display = "none";
+    guideOverlay?.style.removeProperty("--guide-hole-x");
+    guideOverlay?.style.removeProperty("--guide-hole-y");
+    guideOverlay?.style.removeProperty("--guide-hole-r");
+  }
+}
 renderSubjectList();
 renderPreviewGrid();
 showPreview();
 assignDailyStatuses(true);
 time.start();
 addLog("系统启动：展示实验舱预览，等待选择实验体。");
+startGuide();

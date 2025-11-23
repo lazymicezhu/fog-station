@@ -507,6 +507,76 @@ header .status {
   box-shadow: 0 0 8px rgba(140,180,255,0.9);
   transform: translateY(-1px);
 }
+.btn:active { transform: translateY(0); }
+
+/* 新手教程 */
+.guide-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.guide-mask[hidden] { display: none; }
+.guide-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--guide-hole-x, -10%) var(--guide-hole-y, -10%),
+    transparent 0%,
+    transparent calc(var(--guide-hole-r, 0px)),
+    rgba(3,6,18,0.65) calc(var(--guide-hole-r, 0px) + 12px),
+    rgba(3,6,18,0.72) 100%
+  );
+}
+.guide-card {
+  position: relative;
+  min-width: 320px;
+  max-width: 460px;
+  border: 1px solid rgba(180,210,255,0.95);
+  border-radius: 12px;
+  padding: 12px;
+  background: radial-gradient(circle at top, rgba(35,60,130,0.95), rgba(10,16,32,0.95));
+  box-shadow:
+    0 0 26px rgba(0,255,220,0.5),
+    0 0 0 8px rgba(0,255,220,0.16);
+  color: #f4f7ff;
+  pointer-events: auto;
+  z-index: 2;
+}
+.guide-step {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c6dcff;
+}
+.guide-text {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #f4f8ff;
+  white-space: pre-line;
+}
+.guide-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.guide-highlight {
+  position: absolute;
+  border: 2px solid rgba(0,255,200,0.8);
+  box-shadow:
+    0 0 24px rgba(0,255,200,0.8),
+    0 0 0 8px rgba(0,255,200,0.25);
+  border-radius: 10px;
+  pointer-events: none;
+  transition: all .2s ease;
+  background: transparent;
+  z-index: 2;
+}
 
 /* 右侧日志 */
 .log-panel {
