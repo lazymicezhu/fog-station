@@ -1,6 +1,6 @@
 // 简单的游戏时间系统，支持订阅 tick 与跨天事件。
 export function createTimeSystem({ onTick, onDayChange } = {}) {
-  const gameTime = { day: 1, minutes: 0 }; // 1 秒现实 = 1 分钟游戏
+  const gameTime = { day: 1, minutes: 0 }; // 1 秒现实 = 2 分钟游戏
   let timer = null;
 
   const pad = num => num.toString().padStart(2, "0");
@@ -41,7 +41,7 @@ export function createTimeSystem({ onTick, onDayChange } = {}) {
   function start() {
     stop();
     emitTick();
-    timer = setInterval(() => advance(1), 1000);
+    timer = setInterval(() => advance(2), 1000);
   }
 
   function stop() {

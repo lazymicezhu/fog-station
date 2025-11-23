@@ -37,3 +37,7 @@
 - 文档移动至 `docs/` 分层：`docs/systems/`（系统）、`docs/world/`（世界观）、`docs/architecture.md`（架构）。
 - 新增 `docs/README.md`（导航与约定）与 `docs/templates/doc_template.md`（文档模板）。
 - 更新 `time_system.md` 引用路径，其他历史日志未改动。
+
+## 2025-11-23 20:21 — 时间倍率调整
+- 时间系统节奏改为 1 秒现实 = 2 分钟游戏（`modules/time.js`），自动推进与跳日保持不变。
+- 文档同步：`docs/systems/time_system.md`、`docs/systems/subject_monitor.md`、`docs/architecture.md`、`docs/README.md` 更新时间倍率描述。
