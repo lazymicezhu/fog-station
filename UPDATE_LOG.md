@@ -41,3 +41,11 @@
 ## 2025-11-23 20:21 — 时间倍率调整
 - 时间系统节奏改为 1 秒现实 = 2 分钟游戏（`modules/time.js`），自动推进与跳日保持不变。
 - 文档同步：`docs/systems/time_system.md`、`docs/systems/subject_monitor.md`、`docs/architecture.md`、`docs/README.md` 更新时间倍率描述。
+
+## 2025-11-23 20:22 — 时间显示节奏微调
+- 时间流改为 1 秒现实 = 1 分钟游戏，时间栏每秒跳动 1 分钟以提升沉浸感（`modules/time.js`）。
+- 文档同步：`docs/systems/time_system.md`、`docs/systems/subject_monitor.md`、`docs/architecture.md`、`docs/README.md` 恢复对应说明。
+
+## 2025-11-23 20:24 — 时间倍率与呈现更新
+- 时间流保持 1 秒现实 = 2 分钟游戏，但时间栏以每 0.5 秒 +1 分钟方式跳动，维持压迫感且避免大步进（`modules/time.js`）。
+- 文档同步：`docs/systems/time_system.md`、`docs/systems/subject_monitor.md`、`docs/architecture.md`、`docs/README.md` 调整时间节奏描述。
