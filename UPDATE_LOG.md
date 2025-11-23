@@ -32,3 +32,8 @@
 
 ## 2025-11-23 19:45 — 日志格式补充
 - 约定补充：后续新增记录需写具体时间（含时分），历史记录不改动。
+
+## 2025-11-23 20:09 — 文档目录整理
+- 文档移动至 `docs/` 分层：`docs/systems/`（系统）、`docs/world/`（世界观）、`docs/architecture.md`（架构）。
+- 新增 `docs/README.md`（导航与约定）与 `docs/templates/doc_template.md`（文档模板）。
+- 更新 `time_system.md` 引用路径，其他历史日志未改动。
