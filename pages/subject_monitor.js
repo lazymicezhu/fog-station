@@ -7,7 +7,11 @@ const subjects = subjectSeed.map(s => ({
     low: [],
     medium: [],
     high: [],
-  }
+  },
+  lastHeart: 60,
+  lastBrain: 60,
+  lastHeartAlert: false,
+  lastBrainAlert: false
 }));
 let currentSubject = null;
 
@@ -60,6 +64,7 @@ const INITIAL_STABILIZERS = 3;
 let previewMotionHandles = [];
 let vitalsTimer = null;
 let staticEffectTimer = null;
+let previewVitalsTimer = null;
 let currentShift = 0;
 let heartAlert = false;
 let brainAlert = false;
@@ -150,6 +155,8 @@ function selectSubject(idx) {
   previewMotionHandles = [];
   clearInterval(vitalsTimer);
   vitalsTimer = null;
+  clearInterval(previewVitalsTimer);
+  previewVitalsTimer = null;
   clearTimeout(staticEffectTimer);
   currentShift = currentSubject.shift || 0;
   heartAlert = false;
@@ -227,6 +234,12 @@ function randomizeVitals(resetShift = false) {
   vitalHeartFill.style.width = Math.min(hr / 2, 100) + "%";
   vitalBrainFill.style.width = Math.min(brain, 100) + "%";
   vitalShiftFill.style.width = Math.min(currentShift, 100) + "%";
+
+  currentSubject.lastHeart = hr;
+  currentSubject.lastBrain = brain;
+  currentSubject.lastHeartAlert = heartAlert;
+  currentSubject.lastBrainAlert = brainAlert;
+  applyPreviewVitals(currentSubject);
 
   vitalHeartFill.classList.toggle("alert", heartAlert);
   vitalBrainFill.classList.toggle("alert", brainAlert);
@@ -583,10 +596,17 @@ function renderPreviewGrid() {
         <div class="preview-noise"></div>
         <img class="preview-bg" src="${s.image}" alt="${s.name}" />
       </div>
-      <div class="preview-meta">
-        <div class="preview-id">${s.id}</div>
-        <div class="preview-name">${s.name}</div>
-        <div class="preview-stage">阶段：${s.stage}</div>
+      <div class="preview-meta-row">
+        <div class="preview-meta">
+          <div class="preview-id">${s.id}</div>
+          <div class="preview-name">${s.name}</div>
+          <div class="preview-stage">阶段：${s.stage}</div>
+        </div>
+        <div class="preview-bars">
+          <div class="preview-bar"><div class="preview-bar-fill" data-type="heart"></div></div>
+          <div class="preview-bar"><div class="preview-bar-fill" data-type="brain"></div></div>
+          <div class="preview-bar"><div class="preview-bar-fill" data-type="shift"></div></div>
+        </div>
       </div>
     `;
 
@@ -598,6 +618,7 @@ function renderPreviewGrid() {
 
     previewGrid.appendChild(card);
     applyPreviewCardStatus(card, s.dailyStatus);
+    applyPreviewVitals(s, card);
   });
   const placeholder = document.createElement("div");
   placeholder.className = "preview-card preview-empty";
@@ -625,6 +646,7 @@ function updatePreviewStatusColors() {
   cards.forEach(card => {
     const subj = subjects.find(s => s.id === card.dataset.id);
     applyPreviewCardStatus(card, subj?.dailyStatus);
+    applyPreviewVitals(subj, card);
   });
 }
 
@@ -634,6 +656,9 @@ function showPreview() {
   previewMotionHandles = [];
   clearInterval(vitalsTimer);
   vitalsTimer = null;
+  clearInterval(previewVitalsTimer);
+  previewVitalsTimer = setInterval(randomizePreviewVitals, 5000);
+  randomizePreviewVitals();
   clearTimeout(staticEffectTimer);
   previewGrid.style.display = "grid";
   silhouetteEl.style.display = "none";
@@ -710,6 +735,43 @@ function startPreviewMotion() {
     });
   };
   run();
+}
+
+function applyPreviewVitals(subj, cardEl) {
+  if (!subj) return;
+  const card = cardEl || previewGrid.querySelector(`.preview-card[data-id="${subj.id}"]`);
+  if (!card) return;
+  const heartFill = card.querySelector('.preview-bar-fill[data-type="heart"]');
+  const brainFill = card.querySelector('.preview-bar-fill[data-type="brain"]');
+  const shiftFill = card.querySelector('.preview-bar-fill[data-type="shift"]');
+  if (heartFill) {
+    heartFill.style.width = `${Math.min(100, Math.max(0, (subj.lastHeart || 0) / 2))}%`;
+    heartFill.classList.toggle("alert", !!subj.lastHeartAlert);
+  }
+  if (brainFill) {
+    brainFill.style.width = `${Math.min(100, Math.max(0, subj.lastBrain || 0))}%`;
+    brainFill.classList.toggle("alert", !!subj.lastBrainAlert);
+  }
+  if (shiftFill) shiftFill.style.width = `${Math.min(100, Math.max(0, subj.shift || 0))}%`;
+}
+
+function randomizePreviewVitals() {
+  const ranges = {
+    "S-01": { heart: [120, 170], brain: [55, 82] },
+    "S-07": { heart: [90, 135], brain: [60, 90] },
+    "S-13": { heart: [60, 110], brain: [50, 85] }
+  };
+  subjects.forEach(subj => {
+    if (isSubjectLost(subj)) return;
+    const { heart: [hMin, hMax], brain: [bMin, bMax] } = ranges[subj.id] || { heart: [70, 120], brain: [50, 90] };
+    const hr = Math.round(hMin + Math.random() * (hMax - hMin));
+    const brain = Math.round(bMin + Math.random() * (bMax - bMin));
+    subj.lastHeart = hr;
+    subj.lastBrain = brain;
+    subj.lastHeartAlert = hr > hMax;
+    subj.lastBrainAlert = brain > bMax;
+    applyPreviewVitals(subj);
+  });
 }
 
 // 新手教程

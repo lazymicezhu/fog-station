@@ -3,11 +3,19 @@
 > 约定：历史记录保持只追加，不修改已记录的日期与内容。
 > 约定：按顺序向下填写
 
+## 2024-11-24 16:20 — 预览体征后台刷新与进度条配色
+
+- **ux:** 预览模式下后台定期刷新各实验体的心率/脑电，并同步更新预览卡片进度条（`pages/subject_monitor.js`）。
+- **ui:** 预览卡片的三条进度条移至文字右侧竖排展示，默认颜色为心率青、脑电紫、异化蓝，只有超出正常区间时才显示红色警示（`pages/subject_monitor.js`/`subject_monitor.css`）。
+- **docs:** `docs/systems/subject_monitor.md` 更新预览进度条位置、颜色与后台刷新说明。
+- **ui:** 监控界面三条大体征进度条配色与预览小条保持一致（心率青、脑电紫、异化蓝；异常时为红）（`subject_monitor.css`）。
+
 ## 2024-11-24 16:05 — 采集日志进度条 + 跳日回预览
 
 - **ui:** 采集数据日志条本身作为进度条背景，长度对应当前异化百分比，移除单独的“异化进度 +X%”文案（`pages/subject_monitor.js`/`subject_monitor.css`）。
 - **ux:** 点击“下一天”后自动返回预览界面，便于日切后重新选择实验体（`pages/subject_monitor.js`）。
 - **docs:** `docs/systems/subject_monitor.md` 更新采集日志高亮说明。
+- **ui:** 预览卡片右下角新增 3 条无数值进度条，分别对应最近记录的心率、脑电和异化程度（`pages/subject_monitor.js`/`subject_monitor.css`/`docs/systems/subject_monitor.md`）。
 
 ## 2024-11-24 16:00 — 采集日志进度条
 
