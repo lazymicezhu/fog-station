@@ -9,6 +9,7 @@
 - **ui:** 预览卡片的三条进度条移至文字右侧竖排展示，默认颜色为心率青、脑电紫、异化蓝，只有超出正常区间时才显示红色警示（`pages/subject_monitor.js`/`subject_monitor.css`）。
 - **docs:** `docs/systems/subject_monitor.md` 更新预览进度条位置、颜色与后台刷新说明。
 - **ui:** 监控界面三条大体征进度条配色与预览小条保持一致（心率青、脑电紫、异化蓝；异常时为红）（`subject_monitor.css`）。
+- **fix:** 为监控屏容器补充 `id="monitor-screen"`，避免动效控制时取不到元素导致的 `classList` 报错（`subject_monitor.html`）。
 
 ## 2024-11-24 16:05 — 采集日志进度条 + 跳日回预览
 
