@@ -246,6 +246,11 @@ function renderLogList(list) {
   list.forEach(item => {
     const entry = document.createElement("div");
     entry.className = "log-entry";
+    if (item.kind === "sample") entry.classList.add("log-entry-sample");
+    const shiftValue = typeof item.shift === "number" ? Math.min(100, Math.max(0, item.shift)) : null;
+    if (shiftValue !== null) {
+      entry.style.setProperty("--sample-shift", `${shiftValue}%`);
+    }
     if (item.alert) entry.classList.add("alert");
 
     const meta = document.createElement("div");
@@ -257,7 +262,6 @@ function renderLogList(list) {
     body.textContent = item.text + (item.light ? "" : "\n");
     if (item.color === "orange") body.style.color = "#ffcb8a";
     if (item.color === "red") body.style.color = "#ff9bb0";
-
     entry.appendChild(meta);
     entry.appendChild(body);
     logListEl.appendChild(entry);
@@ -265,10 +269,10 @@ function renderLogList(list) {
   logListEl.scrollTop = logListEl.scrollHeight;
 }
 
-function addLog(text, light = false, alert = false, color = null) {
+function addLog(text, light = false, alert = false, color = null, kind = null, shift = null) {
   const ts = time.format();
   const subjectId = currentSubject ? currentSubject.id : "——";
-  const logItem = { ts, subject: subjectId, text, alert, light, color };
+  const logItem = { ts, subject: subjectId, text, alert, light, color, kind, shift };
 
   logs.push(logItem);
   if (logs.length > MAX_LOGS) {
@@ -284,9 +288,9 @@ function addLog(text, light = false, alert = false, color = null) {
   }
 }
 
-function addLogForSubject(subjectId, text, alert = false, color = null) {
+function addLogForSubject(subjectId, text, alert = false, color = null, kind = null, shift = null) {
   const ts = time.format();
-  const logItem = { ts, subject: subjectId, text, alert, light: false, color };
+  const logItem = { ts, subject: subjectId, text, alert, light: false, color, kind, shift };
   logs.push(logItem);
   if (logs.length > MAX_LOGS) logs.shift();
   if (alert) alertLogs.push(logItem);
@@ -367,19 +371,15 @@ btnSample.addEventListener("click", () => {
   if (usedStabilizer) {
     logLines.push("稳定剂生效：本次异化增长已被抵消。");
   }
-  if (effectiveInc > 0) {
-    logLines.push(`异化进度 +${effectiveInc.toFixed(1)}%`);
-  }
-  if (researchGain > 0) {
-    logLines.push(`研究进度 +${researchGain.toFixed(1)}%（当前 ${researchProgress.toFixed(1)}%）`);
-  }
-  logLines.push(`剩余采集许可：${samplePermits}/${DAILY_SAMPLE_PERMITS}`);
   const logText = logLines.join("\n");
 
   addLog(
     logText,
     false,
-    alertFlag
+    alertFlag,
+    null,
+    "sample",
+    currentShift
   );
   if (guideActive) {
     if (guideStepIndex === 2) {
@@ -449,6 +449,7 @@ guideSkip?.addEventListener("click", () => {
 btnNextDay.addEventListener("click", () => {
   pendingDayChangeReason = "manual";
   time.nextDay();
+  showPreview();
 });
 
 function shuffle(arr) {

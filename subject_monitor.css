@@ -562,6 +562,20 @@ header .status {
   margin-bottom: var(--space-2);
   border-bottom: 1px dashed var(--color-border);
 }
+.log-entry-sample {
+  position: relative;
+  padding-left: var(--space-2);
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(118, 227, 234, 0.18) 0%,
+    rgba(118, 227, 234, 0.18) var(--sample-shift, 0%),
+    rgba(118, 227, 234, 0.05) var(--sample-shift, 0%),
+    rgba(118, 227, 234, 0.02) 100%
+  );
+  border: 1px solid rgba(118, 227, 234, 0.25);
+  box-shadow: 0 0 12px rgba(118, 227, 234, 0.15);
+}
 .log-entry:last-child {
   border-bottom: none;
   margin-bottom: 0;
