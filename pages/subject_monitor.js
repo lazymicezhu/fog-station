@@ -1,7 +1,14 @@
 import { createTimeSystem } from "../modules/time.js";
 import { subjects as subjectSeed, dailyPools } from "../data/subjects.js";
 
-const subjects = subjectSeed.map(s => ({ ...s }));
+const subjects = subjectSeed.map(s => ({
+  ...s,
+  remarkQueues: {
+    low: [],
+    medium: [],
+    high: [],
+  }
+}));
 let currentSubject = null;
 
 // DOM 引用
@@ -42,7 +49,6 @@ const btnNextDay = document.getElementById("btn-next-day");
 const lostOverlay = document.getElementById("lost-overlay");
 
 const MAX_LOGS = 18;
-const SAMPLE_COOLDOWN = 5000;
 let motionTimer = null;
 let previewMotionHandles = [];
 let vitalsTimer = null;
@@ -52,14 +58,13 @@ let brainAlert = false;
 const alertLogs = [];
 const logs = [];
 let alertView = false;
-let lastSampleTs = 0;
+let canSampleInCycle = true;
 let pendingDayChangeReason = "auto";
 const dailyQueues = { white: [], orange: [], red: [] };
 const testSeq = { step: 0 };
 const statusColors = { white: "#91a2f0", orange: "#ffcb8a", red: "#ff9bb0" };
 const defaultInfoColor = "#91a2f0";
 const defaultPreviewStageColor = "#9bdfff";
-let sampleCooldownBypass = false;
 let guideStepIndex = 0;
 let guideActive = false;
 
@@ -198,6 +203,7 @@ function randomizeVitals(resetShift = false) {
   const logText = `生命体征更新：心率 ${hr} bpm${heartAlert ? "（异常）" : ""}，脑电活动 ${brain}%${brainAlert ? "（异常）" : ""}，异化进度 ${currentShift.toFixed(1)}%。`;
   const alertFlag = heartAlert || brainAlert;
   addLog(logText, true, alertFlag);
+  canSampleInCycle = true; // Re-arm sampling for the new cycle
 }
 
 function renderLogList(list) {
@@ -265,13 +271,19 @@ btnSample.addEventListener("click", () => {
     alert("观测结果已丢失。");
     return;
   }
-  handleTestSequence("sample");
-  const now = Date.now();
-  if (!sampleCooldownBypass && now - lastSampleTs < SAMPLE_COOLDOWN) {
+
+  if (!canSampleInCycle) {
+    if (!btnSample.classList.contains("btn-cooldown")) {
+      btnSample.classList.add("btn-cooldown");
+      setTimeout(() => {
+        btnSample.classList.remove("btn-cooldown");
+      }, 500);
+    }
     return;
   }
-  lastSampleTs = now;
-  sampleCooldownBypass = false;
+  
+  canSampleInCycle = false; // Consume the sampling right for this cycle
+  handleTestSequence("sample");
 
   const alertFlag = heartAlert || brainAlert;
   let inc = 0;
@@ -286,8 +298,11 @@ btnSample.addEventListener("click", () => {
   vitalShiftText.textContent = currentShift.toFixed(1) + "%";
   updateLostOverlay();
 
+  const remark = getRemark(currentSubject, inc);
+  const logText = `采集数据：${remark}${inc > 0 ? `\n异化进度 +${inc.toFixed(1)}%` : ''}`;
+
   addLog(
-    `采集数据：记录 ${currentSubject.id} 的当前姿态与行为。\n备注：红外轮廓在摄像头外缘停留时间异常延长。${inc > 0 ? ` 异化进度 +${inc.toFixed(1)}%` : ""}`,
+    logText,
     false,
     alertFlag
   );
@@ -312,7 +327,6 @@ btnRandom.addEventListener("click", () => {
   handleTestSequence("random");
   randomizeVitals();
   startSilhouetteMotion(true);
-  sampleCooldownBypass = true; // 刷新后下一次采集不受冷却限制
 });
 
 btnAlertLog.addEventListener("click", () => {
@@ -358,6 +372,39 @@ function drawStatus(color) {
   }
   return dailyQueues[color].shift();
 }
+function refillRemarkQueue(subject, level) {
+  if (!subject || !subject.remarks || !subject.remarks[level]) {
+    subject.remarkQueues[level] = [];
+    return;
+  }
+  subject.remarkQueues[level] = shuffle([...subject.remarks[level]]);
+}
+
+function getRemark(subject, inc) {
+  if (!subject) return "未能获取备注：未选择实验体。";
+
+  let level = 'low';
+  if (inc > 7) {
+    level = 'high';
+  } else if (inc > 3) {
+    level = 'medium';
+  } else if (inc <= 0) {
+    // No shift, no special remark
+    return "数据采集中... 未见明显行为特征。";
+  }
+
+  if (!subject.remarkQueues || !subject.remarkQueues[level] || subject.remarkQueues[level].length === 0) {
+    refillRemarkQueue(subject, level);
+  }
+
+  const queue = subject.remarkQueues[level];
+  if (queue.length === 0) {
+    return "传感器数据无明显异常特征。";
+  }
+
+  return queue.shift();
+}
+
 function rollColor() {
   const r = Math.random();
   if (r < 0.7) return "white";
