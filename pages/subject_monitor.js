@@ -15,6 +15,7 @@ let currentSubject = null;
 const subjectListEl = document.getElementById("subject-list");
 const headerStatusEl = document.getElementById("header-status");
 const monitorSubtitleEl = document.getElementById("monitor-subtitle");
+const monitorScreenEl = document.getElementById("monitor-screen");
 const screenFooterLeft = document.getElementById("screen-footer-left");
 const screenFooterRight = document.getElementById("screen-footer-right");
 const infoIdEl = document.getElementById("info-id");
@@ -49,9 +50,9 @@ const btnNextDay = document.getElementById("btn-next-day");
 const lostOverlay = document.getElementById("lost-overlay");
 
 const MAX_LOGS = 18;
-let motionTimer = null;
 let previewMotionHandles = [];
 let vitalsTimer = null;
+let staticEffectTimer = null;
 let currentShift = 0;
 let heartAlert = false;
 let brainAlert = false;
@@ -118,6 +119,7 @@ function selectSubject(idx) {
   previewMotionHandles = [];
   clearInterval(vitalsTimer);
   vitalsTimer = null;
+  clearTimeout(staticEffectTimer);
   currentShift = currentSubject.shift || 0;
   heartAlert = false;
   brainAlert = false;
@@ -142,7 +144,7 @@ function selectSubject(idx) {
   randomizeVitals(true);
   vitalsTimer = setInterval(() => randomizeVitals(), 5000);
   addLog(`切换监控目标为 ${currentSubject.id}（${currentSubject.name}）。`);
-  startSilhouetteMotion(true);
+  startEffectLoops();
   if (guideActive && guideStepIndex === 0) {
     setGuideStep(1);
   }
@@ -298,6 +300,11 @@ btnSample.addEventListener("click", () => {
   vitalShiftText.textContent = currentShift.toFixed(1) + "%";
   updateLostOverlay();
 
+  // If the subject is now lost, re-render the preview grid in the background
+  if (isSubjectLost(currentSubject)) {
+    renderPreviewGrid();
+  }
+
   const remark = getRemark(currentSubject, inc);
   const logText = `采集数据：${remark}${inc > 0 ? `\n异化进度 +${inc.toFixed(1)}%` : ''}`;
 
@@ -326,7 +333,7 @@ btnRandom.addEventListener("click", () => {
   }
   handleTestSequence("random");
   randomizeVitals();
-  startSilhouetteMotion(true);
+  startEffectLoops();
 });
 
 btnAlertLog.addEventListener("click", () => {
@@ -466,6 +473,11 @@ function updateLostOverlay() {
   if (lostOverlay) {
     lostOverlay.classList.toggle("active", !!lost);
   }
+  if (lost) {
+    clearTimeout(staticEffectTimer);
+    // Stop animations when lost
+    startEffectLoops(); 
+  }
   if (guideActive && guideStepIndex === 3 && lost) {
     setGuideStep(guideStepIndex + 1);
   }
@@ -489,7 +501,13 @@ function renderPreviewGrid() {
         <div class="preview-stage">阶段：${s.stage}</div>
       </div>
     `;
-    card.addEventListener("click", () => selectSubject(index));
+
+    if (isSubjectLost(s)) {
+      card.classList.add("is-lost");
+    } else {
+      card.addEventListener("click", () => selectSubject(index));
+    }
+
     previewGrid.appendChild(card);
     applyPreviewCardStatus(card, s.dailyStatus);
   });
@@ -524,14 +542,15 @@ function updatePreviewStatusColors() {
 
 function showPreview() {
   currentSubject = null;
-  clearTimeout(motionTimer);
-  motionTimer = null;
   previewMotionHandles.forEach(h => clearTimeout(h));
   previewMotionHandles = [];
   clearInterval(vitalsTimer);
   vitalsTimer = null;
+  clearTimeout(staticEffectTimer);
   previewGrid.style.display = "grid";
   silhouetteEl.style.display = "none";
+  silhouetteEl.classList.remove('is-animating'); // Stop animation
+  lostOverlay.classList.remove('active');
   headerStatusEl.textContent = "当前实验体：——";
   monitorSubtitleEl.textContent = "选择实验舱开始监控。";
   screenFooterLeft.textContent = "状态：待机";
@@ -552,19 +571,38 @@ function showPreview() {
   startPreviewMotion();
 }
 
-function startSilhouetteMotion(forceRestart = false) {
-  if (!currentSubject) return;
-  if (motionTimer && !forceRestart) return;
-  clearTimeout(motionTimer);
-  const motions = ["approach", "retreat", "pace"];
-  const nextMotion = () => {
-    if (!currentSubject) return;
-    silhouetteEl.classList.remove("motion-approach", "motion-retreat", "motion-pace");
-    const m = motions[Math.floor(Math.random() * motions.length)];
-    silhouetteEl.classList.add(`motion-${m}`);
-    motionTimer = setTimeout(nextMotion, 4200 + Math.random() * 1200);
+function startEffectLoops() {
+  // Controls the silhouette's own smooth animation
+  if (currentSubject && !isSubjectLost(currentSubject)) {
+    silhouetteEl.classList.add('is-animating');
+  } else {
+    silhouetteEl.classList.remove('is-animating');
+  }
+  // Separately, starts the intermittent screen static effect
+  startStaticEffectLoop();
+}
+
+function startStaticEffectLoop() {
+  clearTimeout(staticEffectTimer);
+  if (!currentSubject || isSubjectLost(currentSubject)) {
+    return;
+  }
+
+  const loop = () => {
+    const nextInterval = 2000 + Math.random() * 3000; // Loop every 2-5 seconds
+    staticEffectTimer = setTimeout(() => {
+      if (Math.random() < 0.3) { // 30% chance to show static
+        const duration = 150 + Math.random() * 250; // For 150-400ms
+        monitorScreenEl.classList.add('has-static');
+        setTimeout(() => {
+          monitorScreenEl.classList.remove('has-static');
+        }, duration);
+      }
+      loop(); // Schedule the next check
+    }, nextInterval);
   };
-  nextMotion();
+
+  loop(); // Start the loop
 }
 
 function startPreviewMotion() {
