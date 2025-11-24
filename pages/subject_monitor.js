@@ -33,6 +33,7 @@ const logListEl = document.getElementById("log-list");
 const btnSample = document.getElementById("btn-sample");
 const btnRandom = document.getElementById("btn-random");
 const btnPreview = document.getElementById("btn-preview");
+const btnStabilizer = document.getElementById("btn-stabilizer");
 const guideMask = document.getElementById("guide-mask");
 const guideOverlay = document.getElementById("guide-overlay");
 const guideCard = document.getElementById("guide-card");
@@ -48,8 +49,14 @@ const btnAlertLog = document.getElementById("btn-alert-log");
 const timeDisplay = document.getElementById("time-display");
 const btnNextDay = document.getElementById("btn-next-day");
 const lostOverlay = document.getElementById("lost-overlay");
+const permitText = document.getElementById("permit-text");
+const stabilizerText = document.getElementById("stabilizer-text");
+const researchText = document.getElementById("research-text");
+const researchFill = document.getElementById("research-fill");
 
 const MAX_LOGS = 18;
+const DAILY_SAMPLE_PERMITS = 10;
+const INITIAL_STABILIZERS = 3;
 let previewMotionHandles = [];
 let vitalsTimer = null;
 let staticEffectTimer = null;
@@ -68,6 +75,10 @@ const defaultInfoColor = "#91a2f0";
 const defaultPreviewStageColor = "#9bdfff";
 let guideStepIndex = 0;
 let guideActive = false;
+let samplePermits = DAILY_SAMPLE_PERMITS;
+let stabilizerCount = INITIAL_STABILIZERS;
+let stabilizerArmed = false;
+let researchProgress = 0;
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -78,14 +89,34 @@ function updateTimeDisplay() {
   if (timeDisplay) timeDisplay.textContent = time.format();
 }
 
+function updateResourceUI() {
+  if (permitText) permitText.textContent = `${samplePermits} / ${DAILY_SAMPLE_PERMITS}`;
+  if (stabilizerText) {
+    const armedText = stabilizerArmed ? "（已待命）" : "";
+    stabilizerText.textContent = `${stabilizerCount} 支${armedText}`;
+  }
+  if (btnStabilizer) {
+    btnStabilizer.disabled = stabilizerCount <= 0 || stabilizerArmed;
+  }
+  const progressValue = Math.min(100, researchProgress);
+  if (researchFill) researchFill.style.width = `${progressValue}%`;
+  if (researchText) researchText.textContent = `${progressValue.toFixed(1)}%`;
+}
+
 function handleDayChange(reason) {
   pendingDayChangeReason = "auto";
   logs.length = 0;
   alertLogs.length = 0;
   renderLogList([]);
+  // Reset daily-limited resources
+  samplePermits = DAILY_SAMPLE_PERMITS;
+  stabilizerArmed = false;
+  canSampleInCycle = true;
+  updateResourceUI();
   assignDailyStatuses(true);
   const prefix = reason === "manual" ? "时间跳转到" : "时间推进到";
   addLog(`${prefix} ${time.format()}。`, true);
+  addLog(`采集许可已重置为 ${samplePermits}/${DAILY_SAMPLE_PERMITS}。`, true);
 }
 
 function isSubjectLost(subj) {
@@ -123,6 +154,7 @@ function selectSubject(idx) {
   currentShift = currentSubject.shift || 0;
   heartAlert = false;
   brainAlert = false;
+  stabilizerArmed = false;
   document.querySelectorAll(".subject-item").forEach((el, i) => {
     el.classList.toggle("active", i === idx);
   });
@@ -138,6 +170,7 @@ function selectSubject(idx) {
   infoRiskEl.textContent = `风险：${currentSubject.risk}`;
   updateDailyStatusUI();
   updateLostOverlay();
+  updateResourceUI();
 
   setSilhouetteAppearance(currentSubject.id);
 
@@ -273,6 +306,10 @@ btnSample.addEventListener("click", () => {
     alert("观测结果已丢失。");
     return;
   }
+  if (samplePermits <= 0) {
+    alert("今日采集许可已用尽。");
+    return;
+  }
 
   if (!canSampleInCycle) {
     if (!btnSample.classList.contains("btn-cooldown")) {
@@ -285,16 +322,29 @@ btnSample.addEventListener("click", () => {
   }
   
   canSampleInCycle = false; // Consume the sampling right for this cycle
+  samplePermits = Math.max(0, samplePermits - 1);
+  updateResourceUI();
   handleTestSequence("sample");
 
   const alertFlag = heartAlert || brainAlert;
-  let inc = 0;
+  let rawInc = 0;
   if (heartAlert && brainAlert) {
-    inc = parseFloat((5 + Math.random() * 10).toFixed(1));
+    rawInc = parseFloat((5 + Math.random() * 10).toFixed(1));
   } else if (alertFlag) {
-    inc = parseFloat((Math.random() * 10).toFixed(1));
+    rawInc = parseFloat((Math.random() * 10).toFixed(1));
   }
-  currentShift = Math.min(100, currentShift + inc);
+  let usedStabilizer = false;
+  let effectiveInc = rawInc;
+  if (rawInc > 0 && stabilizerArmed && stabilizerCount > 0) {
+    usedStabilizer = true;
+    stabilizerCount -= 1;
+    stabilizerArmed = false;
+    effectiveInc = 0;
+  }
+
+  const prevShift = currentShift;
+  currentShift = Math.min(100, currentShift + effectiveInc);
+  effectiveInc = currentShift - prevShift;
   currentSubject.shift = currentShift;
   vitalShiftFill.style.width = Math.min(currentShift, 100) + "%";
   vitalShiftText.textContent = currentShift.toFixed(1) + "%";
@@ -305,8 +355,26 @@ btnSample.addEventListener("click", () => {
     renderPreviewGrid();
   }
 
-  const remark = getRemark(currentSubject, inc);
-  const logText = `采集数据：${remark}${inc > 0 ? `\n异化进度 +${inc.toFixed(1)}%` : ''}`;
+  let researchGain = 0;
+  if (effectiveInc > 0) {
+    researchGain = parseFloat((effectiveInc * 0.1).toFixed(2));
+    researchProgress = Math.min(100, parseFloat((researchProgress + researchGain).toFixed(2)));
+  }
+  updateResourceUI();
+
+  const remark = getRemark(currentSubject, rawInc);
+  const logLines = [`采集数据：${remark}`];
+  if (usedStabilizer) {
+    logLines.push("稳定剂生效：本次异化增长已被抵消。");
+  }
+  if (effectiveInc > 0) {
+    logLines.push(`异化进度 +${effectiveInc.toFixed(1)}%`);
+  }
+  if (researchGain > 0) {
+    logLines.push(`研究进度 +${researchGain.toFixed(1)}%（当前 ${researchProgress.toFixed(1)}%）`);
+  }
+  logLines.push(`剩余采集许可：${samplePermits}/${DAILY_SAMPLE_PERMITS}`);
+  const logText = logLines.join("\n");
 
   addLog(
     logText,
@@ -340,6 +408,25 @@ btnAlertLog.addEventListener("click", () => {
   alertView = !alertView;
   btnAlertLog.textContent = alertView ? "返回监控日志" : "异常日志";
   renderLogList(alertView ? alertLogs : logs);
+});
+
+btnStabilizer?.addEventListener("click", () => {
+  if (!currentSubject) {
+    alert("请先选择一个实验体。");
+    return;
+  }
+  if (isSubjectLost(currentSubject)) {
+    alert("观测结果已丢失。");
+    return;
+  }
+  if (stabilizerCount <= 0) {
+    alert("稳定剂已用尽。");
+    return;
+  }
+  if (stabilizerArmed) return;
+  stabilizerArmed = true;
+  updateResourceUI();
+  addLog("稳定剂已待命：下一次异化增长将被抵消。", true);
 });
 
 btnPreview.addEventListener("click", () => {
@@ -732,6 +819,7 @@ renderSubjectList();
 renderPreviewGrid();
 showPreview();
 assignDailyStatuses(true);
+updateResourceUI();
 time.start();
 addLog("系统启动：展示实验舱预览，等待选择实验体。");
 startGuide();

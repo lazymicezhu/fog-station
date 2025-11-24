@@ -24,7 +24,10 @@
   <div class="main">
     <!-- 左侧：实验体列表 -->
     <aside class="sidebar">
-      <div class="sidebar-title">实验体 / SUBJECTS</div>
+      <div class="sidebar-title">
+        实验体 / SUBJECTS
+        <span class="resource-help" data-tip="异化达到 100% 将丢失监控，无法再刷新或采集。">i</span>
+      </div>
       <div id="subject-list"></div>
     </aside>
 
@@ -96,6 +99,28 @@
         </div>
       </div>
 
+      <div class="resources">
+        <div class="resource-item">
+          <div class="resource-label">采集许可</div>
+          <div class="resource-value" id="permit-text">10 / 10</div>
+        </div>
+        <div class="resource-item resource-stabilizer">
+          <div class="resource-label">稳定剂</div>
+          <div class="resource-inline">
+            <div class="resource-value" id="stabilizer-text">3 支</div>
+            <button class="btn btn-ghost" id="btn-stabilizer">使用稳定剂</button>
+            <span class="resource-help" data-tip="待命后可抵消下一次采集产生的异化增长，生效即消耗一支。">i</span>
+          </div>
+        </div>
+        <div class="resource-item">
+          <div class="resource-label">研究进度</div>
+          <div class="resource-progress">
+            <div class="resource-progress-fill" id="research-fill"></div>
+          </div>
+          <div class="resource-value" id="research-text">0%</div>
+        </div>
+      </div>
+
       <div class="monitor-buttons">
         <button class="btn" id="btn-preview">快捷预览</button>
         <button class="btn" id="btn-sample">采集数据</button>
@@ -107,7 +132,10 @@
     <aside class="log-panel">
       <div class="log-header">
         <div>
-          <div class="log-title">监控日志 / LOG</div>
+          <div class="log-title">
+            监控日志 / LOG
+            <span class="resource-help" data-tip="红色：异常/高风险；橙色：次级风险；常规颜色：普通记录。">i</span>
+          </div>
           <div class="log-sub">记录当前实验体的关键事件与异常行为。</div>
         </div>
         <button class="btn-log" id="btn-alert-log">异常日志</button>
