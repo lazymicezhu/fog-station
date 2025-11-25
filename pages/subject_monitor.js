@@ -1,5 +1,6 @@
 import { createTimeSystem } from "../modules/time.js";
 import { subjects as subjectSeed, dailyPools } from "../data/subjects.js";
+import { hudFrames } from "../data/hud_frames.js";
 
 const subjects = subjectSeed.map(s => ({
   ...s,
@@ -59,6 +60,8 @@ const stabilizerText = document.getElementById("stabilizer-text");
 const researchText = document.getElementById("research-text");
 const researchFill = document.getElementById("research-fill");
 const waveformPanel = document.getElementById("waveform-panel");
+const hudFramesEl = document.getElementById("hud-frames");
+const btnHudDebug = document.getElementById("btn-hud-debug");
 const waveHeart = document.getElementById("wave-heart");
 const waveBrain = document.getElementById("wave-brain");
 const waveHeartText = document.getElementById("wave-heart-text");
@@ -90,6 +93,7 @@ let samplePermits = DAILY_SAMPLE_PERMITS;
 let stabilizerCount = INITIAL_STABILIZERS;
 let stabilizerArmed = false;
 let researchProgress = 0;
+let hudDebug = false;
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -189,9 +193,14 @@ function selectSubject(idx) {
 
   headerStatusEl.textContent = `当前实验体：${currentSubject.id} / ${currentSubject.name}`;
   monitorSubtitleEl.textContent = "遮蔽舱联机中… 已锁定当前实验体。";
-  screenFooterLeft.textContent = `状态：${currentSubject.stage}`;
-  screenFooterRight.textContent = `RW 注射时长：${currentSubject.rwDuration}`;
+  if (typeof screenFooterLeft !== "undefined" && screenFooterLeft) {
+    screenFooterLeft.textContent = "";
+  }
+  if (typeof screenFooterRight !== "undefined" && screenFooterRight) {
+    screenFooterRight.textContent = "";
+  }
   if (waveformPanel) waveformPanel.style.display = "grid";
+  renderHudFrames(currentSubject.id);
 
   infoIdEl.textContent = currentSubject.id;
   infoSpeciesEl.textContent = `物种：${currentSubject.species}`;
@@ -489,6 +498,14 @@ btnNextDay.addEventListener("click", () => {
   showPreview();
 });
 
+btnHudDebug?.addEventListener("click", () => {
+  hudDebug = !hudDebug;
+  btnHudDebug.classList.toggle("hud-debug-active", hudDebug);
+  btnHudDebug.textContent = hudDebug ? "HUD 调试：开" : "HUD 调试";
+  hudFramesEl?.classList.toggle("is-debug", hudDebug);
+  renderHudFrames(currentSubject?.id);
+});
+
 function shuffle(arr) {
   return arr
     .map(value => ({ value, sort: Math.random() }))
@@ -624,7 +641,6 @@ function renderPreviewGrid() {
         <div class="preview-meta">
           <div class="preview-id">${s.id}</div>
           <div class="preview-name">${s.name}</div>
-          <div class="preview-stage">阶段：${s.stage}</div>
         </div>
         <div class="preview-bars">
           <div class="preview-bar"><div class="preview-bar-fill" data-type="heart"></div></div>
@@ -652,16 +668,13 @@ function renderPreviewGrid() {
 }
 
 function applyPreviewCardStatus(card, status) {
-  const stageEl = card.querySelector(".preview-stage");
   if (status && statusColors[status.color]) {
     const color = statusColors[status.color];
     card.style.borderColor = color;
     card.style.boxShadow = `0 0 10px ${color}b3`;
-    if (stageEl) stageEl.style.color = color;
   } else {
     card.style.borderColor = "";
     card.style.boxShadow = "";
-    if (stageEl) stageEl.style.color = defaultPreviewStageColor;
   }
 }
 
@@ -689,10 +702,11 @@ function showPreview() {
   silhouetteEl.classList.remove('is-animating'); // Stop animation
   lostOverlay.classList.remove('active');
   if (waveformPanel) waveformPanel.style.display = "none";
+  if (hudFramesEl) hudFramesEl.innerHTML = "";
   headerStatusEl.textContent = "当前实验体：——";
   monitorSubtitleEl.textContent = "选择实验舱开始监控。";
-  screenFooterLeft.textContent = "状态：待机";
-  screenFooterRight.textContent = "RW 注射时长：——";
+  if (typeof screenFooterLeft !== "undefined" && screenFooterLeft) screenFooterLeft.textContent = "";
+  if (typeof screenFooterRight !== "undefined" && screenFooterRight) screenFooterRight.textContent = "";
   infoIdEl.textContent = "——";
   infoSpeciesEl.textContent = "物种：——";
   infoStageEl.textContent = "未监控";
@@ -805,6 +819,144 @@ function randomizePreviewVitals() {
     subj.lastBrainAlert = brain > bMax;
     applyPreviewVitals(subj);
   });
+}
+
+function renderHudFrames(subjectId) {
+  if (!hudFramesEl) return;
+  hudFramesEl.innerHTML = "";
+  const frames = hudFrames[subjectId];
+  if (!frames || !Array.isArray(frames)) return;
+  const containerRect = hudFramesEl.getBoundingClientRect();
+  const defaultOffset = { x: 70, y: -40 };
+  frames.forEach(frame => {
+    const item = document.createElement("div");
+    item.className = "hud-item";
+    const topPercent = parseFloat(frame.pos?.top || "50") / 100;
+    const leftPercent = parseFloat(frame.pos?.left || "50") / 100;
+    const pinY = containerRect.height * topPercent;
+    const pinX = containerRect.width * leftPercent;
+    const offset = frame.offset || defaultOffset;
+    const boxX = pinX + (offset.x || 0);
+    const boxY = pinY + (offset.y || 0);
+
+    const pin = document.createElement("div");
+    pin.className = "hud-pin";
+    pin.style.top = `${pinY}px`;
+    pin.style.left = `${pinX}px`;
+
+    const box = document.createElement("div");
+    box.className = "hud-box";
+    box.style.top = `${boxY}px`;
+    box.style.left = `${boxX}px`;
+    box.innerHTML = `
+      <div class="hud-frame-label">[${frame.label}]</div>
+      <div class="hud-frame-stat">${frame.stat}：<span>${frame.value}</span></div>
+    `;
+
+    const connector = document.createElement("div");
+    connector.className = "hud-connector";
+    // compute connector geometry
+    const dx = boxX - pinX;
+    const dy = boxY - pinY;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    connector.style.width = `${length}px`;
+    connector.style.transform = `translate(${pinX}px, ${pinY}px) rotate(${angle}deg)`;
+
+    item.appendChild(connector);
+    item.appendChild(pin);
+    item.appendChild(box);
+    hudFramesEl.appendChild(item);
+
+    if (hudDebug) {
+      enableHudDrag(item, frame);
+    }
+  });
+}
+
+function enableHudDrag(itemEl, frame) {
+  const containerRect = hudFramesEl.getBoundingClientRect();
+  const pin = itemEl.querySelector(".hud-pin");
+  const box = itemEl.querySelector(".hud-box");
+  const connector = itemEl.querySelector(".hud-connector");
+  if (!pin || !box || !connector) return;
+
+  const attachDrag = (el, type) => {
+    el.addEventListener("mousedown", ev => {
+      if (!hudDebug) return;
+      ev.preventDefault();
+      const startX = ev.clientX;
+      const startY = ev.clientY;
+      const startPinX = parseFloat(pin.style.left);
+      const startPinY = parseFloat(pin.style.top);
+      const startBoxX = parseFloat(box.style.left);
+      const startBoxY = parseFloat(box.style.top);
+
+      const onMove = e => {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let pinX = startPinX;
+        let pinY = startPinY;
+        let boxX = startBoxX;
+        let boxY = startBoxY;
+        if (type === "pin") {
+          pinX = Math.max(0, Math.min(containerRect.width, startPinX + dx));
+          pinY = Math.max(0, Math.min(containerRect.height, startPinY + dy));
+          boxX = pinX + (frame.offset?.x || 0);
+          boxY = pinY + (frame.offset?.y || 0);
+        } else {
+          boxX = startBoxX + dx;
+          boxY = startBoxY + dy;
+          frame.offset = {
+            x: boxX - pinX,
+            y: boxY - pinY
+          };
+        }
+        updateHudPositions(pin, box, connector, frame, pinX, pinY, boxX, boxY, containerRect);
+      };
+
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        logHudFrames(currentSubject?.id);
+        renderHudFrames(currentSubject?.id);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  };
+
+  attachDrag(pin, "pin");
+  attachDrag(box, "box");
+}
+
+function updateHudPositions(pin, box, connector, frame, pinX, pinY, boxX, boxY, containerRect) {
+  const posTop = Math.max(0, Math.min(100, (pinY / containerRect.height) * 100));
+  const posLeft = Math.max(0, Math.min(100, (pinX / containerRect.width) * 100));
+  frame.pos = { top: `${posTop.toFixed(1)}%`, left: `${posLeft.toFixed(1)}%` };
+  if (!frame.offset) frame.offset = { x: 0, y: 0 };
+  frame.offset.x = boxX - pinX;
+  frame.offset.y = boxY - pinY;
+
+  pin.style.top = `${pinY}px`;
+  pin.style.left = `${pinX}px`;
+  box.style.top = `${boxX}px`;
+  box.style.left = `${boxY}px`;
+
+  const dx = boxX - pinX;
+  const dy = boxY - pinY;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  connector.style.width = `${length}px`;
+  connector.style.transform = `translate(${pinX}px, ${pinY}px) rotate(${angle}deg)`;
+}
+
+function logHudFrames(subjectId) {
+  if (!subjectId) return;
+  const frames = hudFrames[subjectId];
+  if (!frames) return;
+  const snippet = `${JSON.stringify(frames, null, 2)}`;
+  console.log(`[HUD frames] ${subjectId}:`, snippet);
 }
 
 // 新手教程

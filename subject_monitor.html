@@ -15,6 +15,7 @@
     <div class="time-bar">
       <span class="time-label" id="time-display">第 1 天 · 00:00</span>
       <button class="btn-time" id="btn-next-day">下一天</button>
+      <button class="btn-log" id="btn-hud-debug">HUD 调试</button>
     </div>
     <div class="status" id="header-status">
       当前实验体：——
@@ -39,7 +40,7 @@
       </div>
 
       <div class="monitor-screen" id="monitor-screen">
-        <div class="screen-label">遮蔽舱红外轮廓</div>
+        <div class="screen-label"></div>
         <div class="screen-body" id="screen-body">
           <div class="scan-line" id="scan-line"></div>
           <div class="scan-noise"></div>
@@ -49,6 +50,7 @@
             <img class="silhouette-image" id="silhouette-img" alt="实验体红外轮廓" />
             <div class="tail"></div>
           </div>
+          <div class="hud-frames" id="hud-frames"></div>
           <div class="waveform-panel" id="waveform-panel">
             <div class="wave-item">
               <div class="wave-label">
@@ -70,10 +72,7 @@
             </div>
           </div>
         </div>
-        <div class="screen-footer">
-          <span id="screen-footer-left">状态：待机</span>
-          <span id="screen-footer-right">RW 注射时长：——</span>
-        </div>
+        <div class="screen-footer"></div>
       </div>
 
       <div class="monitor-info">
