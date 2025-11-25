@@ -3,13 +3,29 @@
 > 约定：历史记录保持只追加，不修改已记录的日期与内容。
 > 约定：按顺序向下填写
 
-## 2024-11-24 16:20 — 预览体征后台刷新与进度条配色
+## 2025-11-25 09:25 — 波形平滑跳变优化
+- **ux:** ECG/EEG 波形在体征刷新时采用平滑幅度/速度过渡，避免突兀重置，仍随数值变化（`subject_monitor.css`/`pages/subject_monitor.js`）。
+- **docs/process:** 保持历史记录不改动，新的改动写在最新条目。
 
-- **ux:** 预览模式下后台定期刷新各实验体的心率/脑电，并同步更新预览卡片进度条（`pages/subject_monitor.js`）。
-- **ui:** 预览卡片的三条进度条移至文字右侧竖排展示，默认颜色为心率青、脑电紫、异化蓝，只有超出正常区间时才显示红色警示（`pages/subject_monitor.js`/`subject_monitor.css`）。
-- **docs:** `docs/systems/subject_monitor.md` 更新预览进度条位置、颜色与后台刷新说明。
+## 2025-11-25 09:19 — 波形与扫描线调整
+- **ux:** ECG/EEG 波形仅在进入单个实验体监控时显示，预览界面不展示（`subject_monitor.html`/`pages/subject_monitor.js`）。
+- **ui:** 监控屏扫描线动画覆盖整屏，从采集操作触发；右下新增 ECG/EEG 波形卡片随体征更新波速与数值（`subject_monitor.css`/`subject_monitor.html`/`pages/subject_monitor.js`）。
+- **ui:** 体征条与预览进度条配色统一（心率青、脑电紫、异化蓝；异常为红），预览模式后台刷新心率/脑电同步展示（`subject_monitor.css`/`pages/subject_monitor.js`）。
+- **fix:** 监控屏容器补充 `id="monitor-screen"`，避免动效控制报错；扫描线范围与视觉框一致（`subject_monitor.html`/`subject_monitor.css`）。
+- **docs:** `docs/systems/subject_monitor.md` 同步波形、扫描线与预览进度条说明。
+
+## 2025-11-25 09:30 — 波形排版与尺寸优化
+- **ui:** 波形卡片数值移至标题右侧，并增大波形显示区域宽度/高度，提升可读性（`subject_monitor.html`/`subject_monitor.css`）。
+
+## 2024-11-24 16:30 — 波形显示范围与日志日期纠正
+- **docs/process:** 此条为新日志，保持历史记录不改动。
+- **ux:** ECG/EEG 波形仅在进入单个实验体监控时显示，预览界面不展示（`subject_monitor.html`/`pages/subject_monitor.js`）。
+- **ui:** 监控屏扫描线动画范围覆盖整个屏幕，视觉与红框一致（`subject_monitor.css`）。
+- **fix:** 监控屏容器补充 `id="monitor-screen"` 以避免动效 `classList` 报错（`subject_monitor.html`）。
+- **feat:** 点击“采集数据”触发监控屏扫描线动画一次（`pages/subject_monitor.js`/`subject_monitor.css`/`subject_monitor.html`/`docs/systems/subject_monitor.md`）。
 - **ui:** 监控界面三条大体征进度条配色与预览小条保持一致（心率青、脑电紫、异化蓝；异常时为红）（`subject_monitor.css`）。
-- **fix:** 为监控屏容器补充 `id="monitor-screen"`，避免动效控制时取不到元素导致的 `classList` 报错（`subject_monitor.html`）。
+- **ui:** 监控屏右下新增 ECG/EEG 波形卡片，实时显示心率/脑电的波形与数值（`subject_monitor.html`/`subject_monitor.css`/`pages/subject_monitor.js`/`docs/systems/subject_monitor.md`）。
+- **ux:** 预览模式下后台定期刷新各实验体心率/脑电并同步进度条，预览卡片竖排三条无数值进度条，颜色心率青/脑电紫/异化蓝，异常时红（`pages/subject_monitor.js`/`subject_monitor.css`/`docs/systems/subject_monitor.md`）。
 
 ## 2024-11-24 16:05 — 采集日志进度条 + 跳日回预览
 

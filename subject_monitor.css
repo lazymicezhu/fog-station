@@ -264,13 +264,91 @@ header .status {
 }
 .scan-line {
   position: absolute;
-  left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-cyan), transparent);
-  animation: scan 3s linear infinite;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(118, 227, 234, 0) 0%,
+    rgba(118, 227, 234, 0.55) 5%,
+    rgba(118, 227, 234, 0) 10%
+  );
+  background-size: 100% 200%;
+  background-repeat: no-repeat;
+  background-position: 0 -100%;
+  opacity: 0;
+}
+.scan-line.scan-once {
+  animation: scan 0.9s linear forwards;
   opacity: 0.8;
 }
 
+.waveform-panel {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-2);
+  z-index: 3;
+  pointer-events: none;
+}
+.wave-item {
+  background: rgba(0,0,0,0.45);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: var(--space-2);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  min-width: 200px;
+}
+.wave-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-1);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.wave-graph {
+  position: relative;
+  height: 56px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  margin-bottom: var(--space-1);
+}
+.wave-line {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' preserveAspectRatio='none'%3E%3Cpolyline fill='none' stroke='%239bdfff' stroke-width='2' points='0,30 20,30 25,10 30,50 35,25 40,30 60,30 70,10 80,50 90,30 110,30 130,30 135,15 140,45 145,30 160,30 165,20 170,40 175,30 200,30'/%3E%3C/svg%3E");
+  background-size: 180px 60px;
+  background-repeat: repeat-x;
+  animation: wave-move 2s linear infinite;
+  transform-origin: center;
+  transform: scaleY(var(--wave-amp, 1));
+  transition: transform .5s ease-out;
+  will-change: background-position;
+  filter: drop-shadow(0 0 6px rgba(155,223,255,0.4));
+  opacity: 0.9;
+}
+.wave-graph.heart .wave-line {
+  filter: drop-shadow(0 0 6px rgba(118, 227, 234, 0.45));
+}
+.wave-graph.brain .wave-line {
+  filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.45));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' preserveAspectRatio='none'%3E%3Cpolyline fill='none' stroke='%23c084fc' stroke-width='2' points='0,30 20,30 30,25 40,35 50,20 60,40 70,25 80,30 90,30 100,30 110,15 120,45 130,28 140,34 150,26 160,32 170,20 180,40 190,30 200,30'/%3E%3C/svg%3E");
+}
+.wave-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-primary);
+  letter-spacing: 0.04em;
+}
 .lost-overlay {
   position: absolute;
   inset: 0;
@@ -844,10 +922,14 @@ header .status {
 }
 
 @keyframes scan {
-  0% { transform: translateY(-100%); opacity: 0; }
-  20% { opacity: 0.8; }
-  80% { opacity: 0.8; }
-  100% { transform: translateY(100%); opacity: 0; }
+  0% { background-position: 0 -100%; opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { background-position: 0 100%; opacity: 0; }
+}
+@keyframes wave-move {
+  0% { background-position: 0 0; }
+  100% { background-position: -180px 0; }
 }
 @keyframes previewApproach {
   0% { transform: scale(0.995); opacity: 0.94; }

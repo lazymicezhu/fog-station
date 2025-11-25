@@ -41,13 +41,33 @@
       <div class="monitor-screen" id="monitor-screen">
         <div class="screen-label">遮蔽舱红外轮廓</div>
         <div class="screen-body" id="screen-body">
-          <div class="scan-line"></div>
+          <div class="scan-line" id="scan-line"></div>
           <div class="scan-noise"></div>
           <div class="lost-overlay" id="lost-overlay">已丢失观测结果</div>
           <div class="preview-grid" id="preview-grid"></div>
           <div class="silhouette" id="silhouette">
             <img class="silhouette-image" id="silhouette-img" alt="实验体红外轮廓" />
             <div class="tail"></div>
+          </div>
+          <div class="waveform-panel" id="waveform-panel">
+            <div class="wave-item">
+              <div class="wave-label">
+                <span>ECG · 心率</span>
+                <span class="wave-value" id="wave-heart-text">——</span>
+              </div>
+              <div class="wave-graph heart">
+                <div class="wave-line" id="wave-heart"></div>
+              </div>
+            </div>
+            <div class="wave-item">
+              <div class="wave-label">
+                <span>EEG · 脑电</span>
+                <span class="wave-value" id="wave-brain-text">——</span>
+              </div>
+              <div class="wave-graph brain">
+                <div class="wave-line" id="wave-brain"></div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="screen-footer">

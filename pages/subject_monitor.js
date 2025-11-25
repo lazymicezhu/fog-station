@@ -20,6 +20,7 @@ const subjectListEl = document.getElementById("subject-list");
 const headerStatusEl = document.getElementById("header-status");
 const monitorSubtitleEl = document.getElementById("monitor-subtitle");
 const monitorScreenEl = document.getElementById("monitor-screen");
+const scanLineEl = document.getElementById("scan-line");
 const screenFooterLeft = document.getElementById("screen-footer-left");
 const screenFooterRight = document.getElementById("screen-footer-right");
 const infoIdEl = document.getElementById("info-id");
@@ -57,6 +58,11 @@ const permitText = document.getElementById("permit-text");
 const stabilizerText = document.getElementById("stabilizer-text");
 const researchText = document.getElementById("research-text");
 const researchFill = document.getElementById("research-fill");
+const waveformPanel = document.getElementById("waveform-panel");
+const waveHeart = document.getElementById("wave-heart");
+const waveBrain = document.getElementById("wave-brain");
+const waveHeartText = document.getElementById("wave-heart-text");
+const waveBrainText = document.getElementById("wave-brain-text");
 
 const MAX_LOGS = 18;
 const DAILY_SAMPLE_PERMITS = 10;
@@ -106,6 +112,21 @@ function updateResourceUI() {
   const progressValue = Math.min(100, researchProgress);
   if (researchFill) researchFill.style.width = `${progressValue}%`;
   if (researchText) researchText.textContent = `${progressValue.toFixed(1)}%`;
+}
+
+function updateWaveforms(hr = null, brain = null) {
+  if (waveHeartText && hr !== null) waveHeartText.textContent = `${hr} bpm`;
+  if (waveBrainText && brain !== null) waveBrainText.textContent = `${brain}%`;
+  if (waveHeart && hr !== null) {
+    const amp = Math.max(0.7, Math.min(1.6, hr / 120));
+    waveHeart.style.animationDuration = `${Math.max(0.8, Math.min(2.4, 120 / Math.max(hr, 1)))}s`;
+    waveHeart.style.setProperty("--wave-amp", amp.toFixed(2));
+  }
+  if (waveBrain && brain !== null) {
+    const amp = Math.max(0.7, Math.min(1.5, brain / 90));
+    waveBrain.style.animationDuration = `${Math.max(0.8, Math.min(2.4, 120 / Math.max(brain, 1)))}s`;
+    waveBrain.style.setProperty("--wave-amp", amp.toFixed(2));
+  }
 }
 
 function handleDayChange(reason) {
@@ -170,6 +191,7 @@ function selectSubject(idx) {
   monitorSubtitleEl.textContent = "遮蔽舱联机中… 已锁定当前实验体。";
   screenFooterLeft.textContent = `状态：${currentSubject.stage}`;
   screenFooterRight.textContent = `RW 注射时长：${currentSubject.rwDuration}`;
+  if (waveformPanel) waveformPanel.style.display = "grid";
 
   infoIdEl.textContent = currentSubject.id;
   infoSpeciesEl.textContent = `物种：${currentSubject.species}`;
@@ -240,6 +262,7 @@ function randomizeVitals(resetShift = false) {
   currentSubject.lastHeartAlert = heartAlert;
   currentSubject.lastBrainAlert = brainAlert;
   applyPreviewVitals(currentSubject);
+  updateWaveforms(hr, brain);
 
   vitalHeartFill.classList.toggle("alert", heartAlert);
   vitalBrainFill.classList.toggle("alert", brainAlert);
@@ -337,6 +360,7 @@ btnSample.addEventListener("click", () => {
     }
     return;
   }
+  triggerScanLine();
   
   canSampleInCycle = false; // Consume the sampling right for this cycle
   samplePermits = Math.max(0, samplePermits - 1);
@@ -664,6 +688,7 @@ function showPreview() {
   silhouetteEl.style.display = "none";
   silhouetteEl.classList.remove('is-animating'); // Stop animation
   lostOverlay.classList.remove('active');
+  if (waveformPanel) waveformPanel.style.display = "none";
   headerStatusEl.textContent = "当前实验体：——";
   monitorSubtitleEl.textContent = "选择实验舱开始监控。";
   screenFooterLeft.textContent = "状态：待机";
@@ -680,6 +705,7 @@ function showPreview() {
   vitalHeartText.textContent = "——";
   vitalBrainText.textContent = "——";
   vitalShiftText.textContent = "0%";
+  updateWaveforms(null, null);
   updatePreviewStatusColors();
   startPreviewMotion();
 }
@@ -716,6 +742,13 @@ function startStaticEffectLoop() {
   };
 
   loop(); // Start the loop
+}
+
+function triggerScanLine() {
+  if (!scanLineEl) return;
+  scanLineEl.classList.remove("scan-once");
+  void scanLineEl.offsetWidth; // force reflow to restart animation
+  scanLineEl.classList.add("scan-once");
 }
 
 function startPreviewMotion() {
