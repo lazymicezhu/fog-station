@@ -51,7 +51,7 @@ export function initLoginSystem() {
   let currentAvatar = userData?.avatar || 'arts/派蒙1.jpeg';
 
   // Initial Typewriter Status
-  typewriter(statusLine, '系统待机中... 正在初始化安全协议...', 30);
+  typewriter(statusLine, '系统待机中... 正在初始化安全协议...', 50);
 
   // Pre-fill if exists
   if (userData) {
@@ -77,10 +77,10 @@ export function initLoginSystem() {
     // Simulate verification delay
     btnVerify.textContent = '验证中...';
     btnVerify.disabled = true;
-    typewriter(statusLine, '正在连接中央数据库... 验证身份哈希...', 20);
+    typewriter(statusLine, '正在连接中央数据库... 验证身份哈希...', 40);
     
     setTimeout(() => {
-        typewriter(statusLine, '身份验证通过。需要完善档案信息。', 30);
+        typewriter(statusLine, '身份验证通过。需要完善档案信息。', 50);
         
         // "Success" - reveal step 2 with fade
         stepAuth.style.opacity = '0';
@@ -140,7 +140,7 @@ export function initLoginSystem() {
     updateGameUI(finalUserData);
 
     // Animation Out
-    typewriter(statusLine, '配置完成。欢迎回来，研究员。', 30);
+    typewriter(statusLine, '配置完成。欢迎回来，研究员。', 50);
     document.querySelector('.terminal-window').classList.add('success');
     
     setTimeout(() => {
