@@ -2,6 +2,9 @@ import { createTimeSystem } from "../modules/time.js";
 import { subjects as subjectSeed, dailyPools } from "../data/subjects.js";
 import { hudFrames } from "../data/hud_frames.js";
 import { paimonMessages, paimonAlertText } from "../data/paimon_messages.js";
+import { initPlayerSubjects, getPlayerSubjects, getEnemyPool, SubjectInstance } from '../modules/cultivation.js';
+import { CombatSession } from '../modules/combat.js';
+import { SKILL_DB } from '../data/combat_data.js';
 
 const subjects = subjectSeed.map(s => ({
   ...s,
@@ -1259,3 +1262,116 @@ updateNextDayButtonState();
 time.start();
 addLog("系统启动：展示实验舱预览，等待选择实验体。");
 startGuide();
+
+/* ---
+  COMBAT SYSTEM INTEGRATION
+--- */
+initPlayerSubjects(); // Initialize user data
+
+const btnCombatEntry = document.getElementById('btn-combat-entry');
+const combatOverlay = document.getElementById('combat-overlay');
+const btnCombatExit = document.getElementById('btn-combat-exit');
+let currentCombat = null;
+
+if (btnCombatEntry) {
+    btnCombatEntry.addEventListener('click', () => {
+        startCombatEncounter();
+    });
+}
+
+if (btnCombatExit) {
+    btnCombatExit.addEventListener('click', () => {
+        if (currentCombat && currentCombat.state !== 'END_WIN' && currentCombat.state !== 'END_LOSS') {
+             if(!confirm(战斗正在进行中，断开��接将被视为逃跑。确定吗？)) return;
+        }
+        combatOverlay.classList.add('hidden');
+        currentCombat = null;
+    });
+}
+
+function startCombatEncounter() {
+    combatOverlay.classList.remove('hidden');
+    
+    // 1. Pick Player Subject (First one for now)
+    const players = getPlayerSubjects();
+    const playerSubj = players[0]; // Default to first slot
+    
+    // Ensure full HP for demo if dead (optional logic, maybe remove later)
+    if (playerSubj.currentHp <= 0) playerSubj.currentHp = playerSubj.getMaxHp(); 
+
+    // 2. Pick Random Enemy
+    const pool = getEnemyPool();
+    const enemyTemplate = pool[Math.floor(Math.random() * pool.length)];
+    const enemySubj = new SubjectInstance(enemyTemplate.id);
+    
+    // 3. Init Session
+    const logEl = document.getElementById('combat-log');
+    const skillPanel = document.getElementById('skill-panel');
+    
+    logEl.innerHTML = ''; // Clear log
+    skillPanel.innerHTML = ''; // Clear skills
+    
+    const appendLog = (text) => {
+        const div = document.createElement('div');
+        div.className = 'log-line';
+        div.textContent = text;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+    
+    const updateUI = () => {
+        renderCombatUI(currentCombat);
+    };
+    
+    currentCombat = new CombatSession(playerSubj, enemySubj, appendLog, updateUI);
+    
+    // Render Skills
+    const skills = playerSubj.getSkills();
+    skills.forEach(skillId => {
+        const skill = SKILL_DB[skillId];
+        if (!skill) return;
+        
+        const btn = document.createElement('button');
+        btn.className = 'btn-skill';
+        btn.innerHTML = `<span>${skill.name}</span> <span class=skill-cost>ACT</span>`;
+        btn.onclick = () => {
+            currentCombat.playerAction(skillId);
+        };
+        skillPanel.appendChild(btn);
+    });
+    
+    currentCombat.start();
+}
+
+function renderCombatUI(session) {
+    if (!session) return;
+    
+    // Enemy
+    const eName = document.getElementById('enemy-name');
+    if (eName) eName.textContent = session.enemy.getName();
+    
+    const eHp = session.enemy.currentHp;
+    const eMax = session.enemy.getMaxHp();
+    const eHpText = document.getElementById('enemy-hp-text');
+    const eHpBar = document.getElementById('enemy-hp-bar');
+    if (eHpText) eHpText.textContent = `${eHp}/${eMax}`;
+    if (eHpBar) eHpBar.style.width = `${(eHp/eMax)*100}%`;
+    
+    // Player
+    const pName = document.getElementById('player-name');
+    if (pName) pName.textContent = session.player.getName();
+    
+    const pHp = session.player.currentHp;
+    const pMax = session.player.getMaxHp();
+    const pHpText = document.getElementById('player-hp-text');
+    const pHpBar = document.getElementById('player-hp-bar');
+    if (pHpText) pHpText.textContent = `${pHp}/${pMax}`;
+    if (pHpBar) pHpBar.style.width = `${(pHp/pMax)*100}%`;
+    
+    // Disable buttons if not player turn or game over
+    const btns = document.querySelectorAll('.btn-skill');
+    const locked = session.state !== 'PLAYER_ACT';
+    btns.forEach(btn => {
+        btn.disabled = locked;
+    });
+}

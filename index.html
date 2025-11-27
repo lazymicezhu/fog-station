@@ -204,6 +204,7 @@
 
       <div class="monitor-buttons">
         <button class="btn" id="btn-preview">快捷预览</button>
+        <button class="btn" id="btn-combat-entry">神经同步</button>
         <button class="btn" id="btn-sample">采集数据</button>
         <button class="btn" id="btn-random">刷新生命体征</button>
       </div>
@@ -244,6 +245,56 @@
       <button class="btn" id="guide-prev">上一步</button>
       <button class="btn" id="guide-next">下一步</button>
       <button class="btn" id="guide-skip">跳过教程</button>
+    </div>
+  </div>
+</div>
+
+<!-- Combat Overlay -->
+<div id="combat-overlay" class="combat-overlay hidden">
+  <div class="combat-terminal">
+    <div class="combat-header">
+      <span class="blink-slow">NEURAL LINK: SYNCHRONIZED</span>
+      <button id="btn-combat-exit" class="btn-close-combat">断开连接</button>
+    </div>
+    
+    <div class="combat-scene">
+      <!-- Enemy Status -->
+      <div class="combat-unit enemy">
+        <div class="unit-hud">
+          <div class="unit-name" id="enemy-name">TARGET</div>
+          <div class="hp-bar-container">
+            <div class="hp-bar-fill" id="enemy-hp-bar"></div>
+          </div>
+          <div class="hp-text" id="enemy-hp-text">???/???</div>
+        </div>
+        <div class="unit-sprite" id="enemy-sprite">
+           <!-- Placeholder visual -->
+           <div class="sprite-box enemy-box"></div>
+        </div>
+      </div>
+
+      <!-- Player Status -->
+      <div class="combat-unit player">
+        <div class="unit-sprite" id="player-sprite">
+           <div class="sprite-box player-box"></div>
+        </div>
+        <div class="unit-hud">
+          <div class="unit-name" id="player-name">SUBJECT</div>
+          <div class="hp-bar-container">
+            <div class="hp-bar-fill" id="player-hp-bar"></div>
+          </div>
+          <div class="hp-text" id="player-hp-text">100/100</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="combat-controls">
+      <div class="combat-log" id="combat-log">
+        <div class="log-line">神经连接已建立。等待同步...</div>
+      </div>
+      <div class="skill-panel" id="skill-panel">
+        <!-- Buttons injected by JS -->
+      </div>
     </div>
   </div>
 </div>
