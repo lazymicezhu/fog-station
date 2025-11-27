@@ -546,8 +546,18 @@ function updatePaimonMessage(forceAlert = false) {
   paimonMessageEl.textContent = line;
   clampPaimonWithinView();
 }
+
+/**
+ * 设置派蒙助手的位置 (相对于 .app 容器)
+ * @param {number} x - 目标中心点 X 坐标 (相对于 .app 容器)
+ * @param {number} y - 目标中心点 Y 坐标 (相对于 .app 容器)
+ */
 function setPaimonPosition(x, y) {
   if (!paimonWidget) return;
+  const container = paimonWidget.offsetParent || document.body;
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  
   const padding = 8;
   const gap = 4;
   const avatarW = paimonAvatar?.offsetWidth || 74;
@@ -557,35 +567,48 @@ function setPaimonPosition(x, y) {
   const totalW = msgW + gap + avatarW;
   const totalH = Math.max(avatarH, msgH);
 
-  // 先钳制头像中心在可视范围内
+  // 1. 钳制锚点 (x, y) 必须在容器内安全区域
   const minX = padding + avatarW / 2;
-  const maxX = window.innerWidth - padding - avatarW / 2;
+  const maxX = cw - padding - avatarW / 2;
   const minY = padding + avatarH / 2;
-  const maxY = window.innerHeight - padding - avatarH / 2;
+  const maxY = ch - padding - avatarH / 2;
+  
   const anchorX = Math.min(Math.max(minX, x), maxX);
   const anchorY = Math.min(Math.max(minY, y), maxY);
 
-  // 判定气泡放左或右，优先不越界
-  const spaceRight = window.innerWidth - (anchorX + avatarW / 2) - gap - padding;
-  const spaceLeft = anchorX - avatarW / 2 - gap - padding;
-  let placeLeft = spaceRight < msgW && spaceLeft > spaceRight;
-  let widgetLeft = placeLeft
-    ? anchorX - avatarW / 2 - gap - msgW
-    : anchorX - avatarW / 2;
+  // 2. 决定气泡显示在左侧还是右侧
+  // 剩余空间计算
+  const spaceRight = cw - (anchorX + avatarW / 2) - gap - padding;
+  // const spaceLeft = anchorX - avatarW / 2 - gap - padding;
+  
+  // 默认尝试放右边，如果右边放不下且左边空间更多，则放左边
+  // 但这里简单判定：右边不够就放左边
+  let placeLeft = spaceRight < msgW;
+
+  // 计算 Widget 左上角位置 (相对于容器)
+  let widgetLeft;
+  
+  if (placeLeft) {
+    widgetLeft = anchorX - avatarW / 2 - gap - msgW;
+  } else {
+    widgetLeft = anchorX - avatarW / 2; // Avatar 在左，Msg 在右，Widget 起始就是 Avatar 左边缘
+  }
+  
+  // 垂直居中对齐锚点
   let widgetTop = anchorY - avatarH / 2;
 
-  // 如仍越界则尝试切换方向或压缩到可视区域内
-  if (widgetLeft < padding && placeLeft) {
-    placeLeft = false;
-    widgetLeft = anchorX - avatarW / 2;
+  // 3. 再次钳制 Widget 整体不越界
+  // 如果放左边还是越界左边缘
+  if (widgetLeft < padding) {
+      widgetLeft = padding;
+      placeLeft = false; // 强制改回右边模式? 或者重叠显示
   }
-  if (widgetLeft + totalW > window.innerWidth - padding && !placeLeft) {
-    placeLeft = true;
-    widgetLeft = anchorX - avatarW / 2 - gap - msgW;
+  // 如果放右边越界右边缘
+  if (widgetLeft + totalW > cw - padding) {
+      widgetLeft = cw - padding - totalW;
   }
-  // 最终再钳制一次
-  widgetLeft = Math.min(Math.max(padding, widgetLeft), window.innerWidth - padding - totalW);
-  widgetTop = Math.min(Math.max(padding, widgetTop), window.innerHeight - padding - totalH);
+  
+  widgetTop = Math.min(Math.max(padding, widgetTop), ch - padding - totalH);
 
   paimonWidget.classList.toggle("message-left", placeLeft);
   paimonWidget.classList.toggle("message-right", !placeLeft);
@@ -597,33 +620,58 @@ function setPaimonPosition(x, y) {
 
   paimonPosition = { x: anchorX, y: anchorY };
 }
+
 function initPaimonPosition() {
   if (!paimonWidget) return;
+  const container = paimonWidget.offsetParent || document.body;
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
   const avatarW = paimonAvatar?.offsetWidth || 74;
   const avatarH = paimonAvatar?.offsetHeight || 74;
-  const startX = window.innerWidth - 16 - avatarW / 2;
-  const startY = window.innerHeight - 16 - avatarH / 2;
+  
+  // 初始位置：容器右下角
+  const startX = cw - 30 - avatarW / 2;
+  const startY = ch - 30 - avatarH / 2;
   setPaimonPosition(startX, startY);
 }
+
 function clampPaimonWithinView() {
   if (paimonPosition.x === null || paimonPosition.y === null) return;
   setPaimonPosition(paimonPosition.x, paimonPosition.y);
 }
+
 function startPaimonDrag(e) {
   if (!paimonWidget) return;
+  // 获取容器偏移
+  const container = paimonWidget.offsetParent || document.body;
+  const rect = container.getBoundingClientRect();
+  
+  // 计算当前鼠标在容器内的相对坐标
+  const mouseInContainerX = e.clientX - rect.left;
+  const mouseInContainerY = e.clientY - rect.top;
+
   paimonDrag = {
     active: true,
     pointerId: e.pointerId,
-    offsetX: e.clientX - (paimonPosition.x ?? 0),
-    offsetY: e.clientY - (paimonPosition.y ?? 0)
+    // 记录鼠标相对于当前锚点的偏移
+    offsetX: mouseInContainerX - (paimonPosition.x ?? 0),
+    offsetY: mouseInContainerY - (paimonPosition.y ?? 0)
   };
   paimonWidget.classList.add("is-dragging");
   paimonWidget.setPointerCapture(e.pointerId);
 }
+
 function movePaimon(e) {
   if (!paimonDrag.active || (paimonDrag.pointerId !== null && e.pointerId !== paimonDrag.pointerId)) return;
-  setPaimonPosition(e.clientX - paimonDrag.offsetX, e.clientY - paimonDrag.offsetY);
+  
+  const container = paimonWidget.offsetParent || document.body;
+  const rect = container.getBoundingClientRect();
+  const mouseInContainerX = e.clientX - rect.left;
+  const mouseInContainerY = e.clientY - rect.top;
+
+  setPaimonPosition(mouseInContainerX - paimonDrag.offsetX, mouseInContainerY - paimonDrag.offsetY);
 }
+
 function endPaimonDrag(e) {
   if (!paimonDrag.active || (paimonDrag.pointerId !== null && e.pointerId !== paimonDrag.pointerId)) return;
   paimonDrag = { active: false, pointerId: null, offsetX: 0, offsetY: 0 };
@@ -633,12 +681,19 @@ function endPaimonDrag(e) {
     paimonWidget.releasePointerCapture(e.pointerId);
   }
 }
+
 function initPaimonAssistant() {
   if (!paimonWidget) return;
   initPaimonPosition();
+  // Expose reset function globally for login transition
+  window.resetPaimonWidget = initPaimonPosition;
+  
   paimonWidget.addEventListener("pointerdown", startPaimonDrag);
   window.addEventListener("pointermove", movePaimon);
   window.addEventListener("pointerup", endPaimonDrag);
+  // Resize logic might need adjustment if container size changes, 
+  // but for fixed 1200x900 app, it's less critical unless window resize affects scale.
+  // We keep it to re-clamp just in case.
   window.addEventListener("resize", clampPaimonWithinView);
   updatePaimonMessage();
 }
