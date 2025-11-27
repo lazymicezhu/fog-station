@@ -1,6 +1,7 @@
 import { createTimeSystem } from "../modules/time.js";
 import { subjects as subjectSeed, dailyPools } from "../data/subjects.js";
 import { hudFrames } from "../data/hud_frames.js";
+import { paimonMessages, paimonAlertText } from "../data/paimon_messages.js";
 
 const subjects = subjectSeed.map(s => ({
   ...s,
@@ -61,15 +62,18 @@ const researchText = document.getElementById("research-text");
 const researchFill = document.getElementById("research-fill");
 const waveformPanel = document.getElementById("waveform-panel");
 const hudFramesEl = document.getElementById("hud-frames");
-const btnHudDebug = document.getElementById("btn-hud-debug");
 const waveHeart = document.getElementById("wave-heart");
 const waveBrain = document.getElementById("wave-brain");
 const waveHeartText = document.getElementById("wave-heart-text");
 const waveBrainText = document.getElementById("wave-brain-text");
+const paimonWidget = document.getElementById("paimon-widget");
+const paimonMessageEl = document.getElementById("paimon-message");
+const paimonAvatar = document.getElementById("paimon-avatar");
 
 const MAX_LOGS = 18;
 const DAILY_SAMPLE_PERMITS = 10;
 const INITIAL_STABILIZERS = 3;
+const NEXT_DAY_UNLOCK_MINUTES = 12 * 60; // 12:00 之后才能跳日
 let previewMotionHandles = [];
 let vitalsTimer = null;
 let staticEffectTimer = null;
@@ -94,6 +98,8 @@ let stabilizerCount = INITIAL_STABILIZERS;
 let stabilizerArmed = false;
 let researchProgress = 0;
 let hudDebug = false;
+let paimonPosition = { x: null, y: null }; // 表示头像中心锚点位置
+let paimonDrag = { active: false, pointerId: null, offsetX: 0, offsetY: 0 };
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -102,6 +108,7 @@ const time = createTimeSystem({
 
 function updateTimeDisplay() {
   if (timeDisplay) timeDisplay.textContent = time.format();
+  updateNextDayButtonState();
 }
 
 function updateResourceUI() {
@@ -116,6 +123,13 @@ function updateResourceUI() {
   const progressValue = Math.min(100, researchProgress);
   if (researchFill) researchFill.style.width = `${progressValue}%`;
   if (researchText) researchText.textContent = `${progressValue.toFixed(1)}%`;
+}
+function updateNextDayButtonState() {
+  if (!btnNextDay || !time || !time.getTime) return;
+  const { minutes } = time.getTime();
+  const unlocked = minutes >= NEXT_DAY_UNLOCK_MINUTES;
+  btnNextDay.disabled = !unlocked;
+  btnNextDay.classList.toggle("btn-disabled", !unlocked);
 }
 
 function updateWaveforms(hr = null, brain = null) {
@@ -493,24 +507,138 @@ guideSkip?.addEventListener("click", () => {
 });
 
 btnNextDay.addEventListener("click", () => {
+  if (!time.getTime || time.getTime().minutes < NEXT_DAY_UNLOCK_MINUTES) {
+    alert("需到 12:00 之后才能进入下一天。");
+    return;
+  }
   pendingDayChangeReason = "manual";
   time.nextDay();
   showPreview();
 });
 
-btnHudDebug?.addEventListener("click", () => {
-  hudDebug = !hudDebug;
-  btnHudDebug.classList.toggle("hud-debug-active", hudDebug);
-  btnHudDebug.textContent = hudDebug ? "HUD 调试：开" : "HUD 调试";
-  hudFramesEl?.classList.toggle("is-debug", hudDebug);
-  renderHudFrames(currentSubject?.id);
-});
+
 
 function shuffle(arr) {
   return arr
     .map(value => ({ value, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
     .map(({ value }) => value);
+}
+function pickPaimonLine() {
+  if (!paimonMessages || paimonMessages.length === 0) return "保持监控";
+  const idx = Math.floor(Math.random() * paimonMessages.length);
+  return paimonMessages[idx] || "保持监控";
+}
+function hasAnyRedStatus() {
+  return subjects.some(s => s.dailyStatus?.color === "red");
+}
+function updatePaimonMessage(forceAlert = false) {
+  if (!paimonWidget || !paimonMessageEl) return;
+  const redSubjects = subjects.filter(s => s.dailyStatus?.color === "red");
+  const alerting = forceAlert || redSubjects.length > 0;
+  paimonWidget.classList.toggle("paimon-alert", alerting);
+  const alertLine = redSubjects.length > 0
+    ? `${redSubjects[0].id} 实验体有异常`
+    : (paimonAlertText || "红色警告");
+  const line = alerting ? alertLine : pickPaimonLine();
+  paimonMessageEl.textContent = line;
+  clampPaimonWithinView();
+}
+function setPaimonPosition(x, y) {
+  if (!paimonWidget) return;
+  const padding = 8;
+  const gap = 4;
+  const avatarW = paimonAvatar?.offsetWidth || 74;
+  const avatarH = paimonAvatar?.offsetHeight || 74;
+  const msgW = paimonMessageEl?.offsetWidth || 0;
+  const msgH = paimonMessageEl?.offsetHeight || 32;
+  const totalW = msgW + gap + avatarW;
+  const totalH = Math.max(avatarH, msgH);
+
+  // 先钳制头像中心在可视范围内
+  const minX = padding + avatarW / 2;
+  const maxX = window.innerWidth - padding - avatarW / 2;
+  const minY = padding + avatarH / 2;
+  const maxY = window.innerHeight - padding - avatarH / 2;
+  const anchorX = Math.min(Math.max(minX, x), maxX);
+  const anchorY = Math.min(Math.max(minY, y), maxY);
+
+  // 判定气泡放左或右，优先不越界
+  const spaceRight = window.innerWidth - (anchorX + avatarW / 2) - gap - padding;
+  const spaceLeft = anchorX - avatarW / 2 - gap - padding;
+  let placeLeft = spaceRight < msgW && spaceLeft > spaceRight;
+  let widgetLeft = placeLeft
+    ? anchorX - avatarW / 2 - gap - msgW
+    : anchorX - avatarW / 2;
+  let widgetTop = anchorY - avatarH / 2;
+
+  // 如仍越界则尝试切换方向或压缩到可视区域内
+  if (widgetLeft < padding && placeLeft) {
+    placeLeft = false;
+    widgetLeft = anchorX - avatarW / 2;
+  }
+  if (widgetLeft + totalW > window.innerWidth - padding && !placeLeft) {
+    placeLeft = true;
+    widgetLeft = anchorX - avatarW / 2 - gap - msgW;
+  }
+  // 最终再钳制一次
+  widgetLeft = Math.min(Math.max(padding, widgetLeft), window.innerWidth - padding - totalW);
+  widgetTop = Math.min(Math.max(padding, widgetTop), window.innerHeight - padding - totalH);
+
+  paimonWidget.classList.toggle("message-left", placeLeft);
+  paimonWidget.classList.toggle("message-right", !placeLeft);
+
+  paimonWidget.style.left = `${widgetLeft}px`;
+  paimonWidget.style.top = `${widgetTop}px`;
+  paimonWidget.style.right = "auto";
+  paimonWidget.style.bottom = "auto";
+
+  paimonPosition = { x: anchorX, y: anchorY };
+}
+function initPaimonPosition() {
+  if (!paimonWidget) return;
+  const avatarW = paimonAvatar?.offsetWidth || 74;
+  const avatarH = paimonAvatar?.offsetHeight || 74;
+  const startX = window.innerWidth - 16 - avatarW / 2;
+  const startY = window.innerHeight - 16 - avatarH / 2;
+  setPaimonPosition(startX, startY);
+}
+function clampPaimonWithinView() {
+  if (paimonPosition.x === null || paimonPosition.y === null) return;
+  setPaimonPosition(paimonPosition.x, paimonPosition.y);
+}
+function startPaimonDrag(e) {
+  if (!paimonWidget) return;
+  paimonDrag = {
+    active: true,
+    pointerId: e.pointerId,
+    offsetX: e.clientX - (paimonPosition.x ?? 0),
+    offsetY: e.clientY - (paimonPosition.y ?? 0)
+  };
+  paimonWidget.classList.add("is-dragging");
+  paimonWidget.setPointerCapture(e.pointerId);
+}
+function movePaimon(e) {
+  if (!paimonDrag.active || (paimonDrag.pointerId !== null && e.pointerId !== paimonDrag.pointerId)) return;
+  setPaimonPosition(e.clientX - paimonDrag.offsetX, e.clientY - paimonDrag.offsetY);
+}
+function endPaimonDrag(e) {
+  if (!paimonDrag.active || (paimonDrag.pointerId !== null && e.pointerId !== paimonDrag.pointerId)) return;
+  paimonDrag = { active: false, pointerId: null, offsetX: 0, offsetY: 0 };
+  paimonWidget.classList.remove("is-dragging");
+  clampPaimonWithinView();
+  if (e.pointerId !== undefined) {
+    paimonWidget.releasePointerCapture(e.pointerId);
+  }
+}
+function initPaimonAssistant() {
+  if (!paimonWidget) return;
+  initPaimonPosition();
+  paimonWidget.addEventListener("pointerdown", startPaimonDrag);
+  window.addEventListener("pointermove", movePaimon);
+  window.addEventListener("pointerup", endPaimonDrag);
+  window.addEventListener("resize", clampPaimonWithinView);
+  updatePaimonMessage();
 }
 function refillQueue(color) {
   dailyQueues[color] = shuffle(dailyPools[color]);
@@ -575,6 +703,7 @@ function assignDailyStatuses(logNow = true) {
     }
   });
   updatePreviewStatusColors();
+  updatePaimonMessage();
 }
 function updateDailyStatusUI() {
   if (!currentSubject) return;
@@ -1066,8 +1195,10 @@ function setGuideStep(step) {
 renderSubjectList();
 renderPreviewGrid();
 showPreview();
+initPaimonAssistant();
 assignDailyStatuses(true);
 updateResourceUI();
+updateNextDayButtonState();
 time.start();
 addLog("系统启动：展示实验舱预览，等待选择实验体。");
 startGuide();

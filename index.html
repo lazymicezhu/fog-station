@@ -12,11 +12,11 @@
 <div class="app">
   <header>
     <div class="title">BNU · <span>SUBJECT MONITOR</span></div>
-    <div class="time-bar">
-      <span class="time-label" id="time-display">第 1 天 · 00:00</span>
-      <button class="btn-time" id="btn-next-day">下一天</button>
-      <button class="btn-log" id="btn-hud-debug">HUD 调试</button>
-    </div>
+  <div class="time-bar">
+    <span class="time-label" id="time-display">第 1 天 · 00:00</span>
+    <button class="btn-time" id="btn-next-day">下一天</button>
+    <span class="resource-help" data-tip="12:00 后开启">!</span>
+  </div>
     <div class="status" id="header-status">
       当前实验体：——
     </div>
@@ -27,7 +27,7 @@
     <aside class="sidebar">
       <div class="sidebar-title">
         实验体 / SUBJECTS
-        <span class="resource-help" data-tip="异化达到 100% 将丢失监控，无法再刷新或采集。">i</span>
+        <span class="resource-help" data-tip="异化 100% 后丢失监控，无法操作">i</span>
       </div>
       <div id="subject-list"></div>
     </aside>
@@ -128,7 +128,7 @@
           <div class="resource-inline">
             <div class="resource-value" id="stabilizer-text">3 支</div>
             <button class="btn btn-ghost" id="btn-stabilizer">使用稳定剂</button>
-            <span class="resource-help" data-tip="待命后可抵消下一次采集产生的异化增长，生效即消耗一支。">i</span>
+            <span class="resource-help" data-tip="待命抵消单次异化，生效即消耗">i</span>
           </div>
         </div>
         <div class="resource-item">
@@ -153,7 +153,7 @@
         <div>
           <div class="log-title">
             监控日志 / LOG
-            <span class="resource-help" data-tip="红色：异常/高风险；橙色：次级风险；常规颜色：普通记录。">i</span>
+            <span class="resource-help" data-tip="红：高风险 / 橙：次风险 / 默认：常规">i</span>
           </div>
           <div class="log-sub">记录当前实验体的关键事件与异常行为。</div>
         </div>
@@ -176,6 +176,14 @@
       <button class="btn" id="guide-skip">跳过教程</button>
     </div>
   </div>
+</div>
+
+<!-- 悬浮助手 -->
+<div class="paimon-widget" id="paimon-widget">
+  <div class="paimon-avatar" id="paimon-avatar">
+    <img src="arts/派蒙1.jpeg" alt="派蒙助手头像" draggable="false" />
+  </div>
+  <div class="paimon-message" id="paimon-message">保持监控</div>
 </div>
 
 <script type="module" src="pages/subject_monitor.js"></script>
