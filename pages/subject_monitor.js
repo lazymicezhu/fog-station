@@ -123,11 +123,12 @@ function updateResourceUI() {
   const progressValue = Math.min(100, researchProgress);
   if (researchFill) researchFill.style.width = `${progressValue}%`;
   if (researchText) researchText.textContent = `${progressValue.toFixed(1)}%`;
+  updateNextDayButtonState();
 }
 function updateNextDayButtonState() {
   if (!btnNextDay || !time || !time.getTime) return;
   const { minutes } = time.getTime();
-  const unlocked = minutes >= NEXT_DAY_UNLOCK_MINUTES;
+  const unlocked = minutes >= NEXT_DAY_UNLOCK_MINUTES || samplePermits <= 0;
   btnNextDay.disabled = !unlocked;
   btnNextDay.classList.toggle("btn-disabled", !unlocked);
 }
@@ -507,8 +508,9 @@ guideSkip?.addEventListener("click", () => {
 });
 
 btnNextDay.addEventListener("click", () => {
-  if (!time.getTime || time.getTime().minutes < NEXT_DAY_UNLOCK_MINUTES) {
-    alert("需到 12:00 之后才能进入下一天。");
+  const { minutes } = time.getTime();
+  if (minutes < NEXT_DAY_UNLOCK_MINUTES && samplePermits > 0) {
+    alert("需到 12:00 或耗尽采集许可后才能进入下一天。");
     return;
   }
   pendingDayChangeReason = "manual";

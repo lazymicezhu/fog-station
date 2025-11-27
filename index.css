@@ -727,6 +727,9 @@ header .status {
   font-family: var(--font-mono);
   color: var(--color-text-secondary);
 }
+.preview-empty .preview-meta {
+  flex: none;
+}
 
 .preview-mini.preview-motion-approach { animation: previewApproach 9s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
 .preview-mini.preview-motion-retreat { animation: previewRetreat 8.5s cubic-bezier(0.45, 0.05, 0.25, 0.95) infinite; }
