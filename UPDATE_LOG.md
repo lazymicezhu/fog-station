@@ -3,46 +3,52 @@
 > 约定：历史记录保持只追加，不修改已记录的日期与内容。
 > 约定：按顺序向下填写
 
+## 2025-11-27 11:16 — 样式文件改名为 index.css
+- **chore:** 将页面样式文件重命名为 `index.css`，并更新所有引用与文档；旧文件 `subject_monitor.css` 已移除（`index.html`/`index.css`/`docs/*`/`UPDATE_LOG.md`）。
+
+## 2025-11-27 11:12 — 入口文件切换为 index
+- **chore:** 新增 `index.html` 作为默认入口，文档与更新记录内的引用全部从 `subject_monitor.html` 切换至 `index.html`（`index.html`/`docs/*`/`UPDATE_LOG.md`）。
+
 ## 2025-11-25 10:05 — 预览页页脚清理
-- **ui:** 移除监控屏底部 footer 内容，保持预览/监控区域更紧凑（`subject_monitor.html`/`subject_monitor.css`）。
+- **ui:** 移除监控屏底部 footer 内容，保持预览/监控区域更紧凑（`index.html`/`index.css`）。
 
 ## 2025-11-25 10:00 — 波形尺寸微调
-- **ui:** 心率/脑电波形卡片整体缩小（宽度和高度减小、内边距收紧）以适配当前视窗（`subject_monitor.css`）。
+- **ui:** 心率/脑电波形卡片整体缩小（宽度和高度减小、内边距收紧）以适配当前视窗（`index.css`）。
 
 ## 2025-11-25 10:10 — HUD 标记点更新
 - **chore:** 根据最新调试坐标更新 S-01 的 HUD 标记点与偏移（`data/hud_frames.js`）。
 
 ## 2025-11-25 09:55 — 预览界面精简
-- **ui:** 移除预览态的屏幕标题、底部状态/RW注射时长，以及预览卡片中的“阶段”文案，仅保留代号、名称与进度条（`subject_monitor.html`/`pages/subject_monitor.js`/`subject_monitor.css`）。
+- **ui:** 移除预览态的屏幕标题、底部状态/RW注射时长，以及预览卡片中的“阶段”文案，仅保留代号、名称与进度条（`index.html`/`pages/subject_monitor.js`/`index.css`）。
 
 ## 2025-11-25 09:50 — 页面缩放至免滚动
-- **layout:** 去除滚动并将页面缩至 1200x900，同时居中显示，保证全部内容无需滚动可见（`subject_monitor.css`）。
+- **layout:** 去除滚动并将页面缩至 1200x900，同时居中显示，保证全部内容无需滚动可见（`index.css`）。
 
 ## 2025-11-25 09:45 — 页面可视与滚动
-- **layout:** 保持 1300x1000 固定尺寸，但允许页面整体滚动，确保底部按钮可见（`subject_monitor.css`）。
+- **layout:** 保持 1300x1000 固定尺寸，但允许页面整体滚动，确保底部按钮可见（`index.css`）。
 
 ## 2025-11-25 09:40 — 固定页面尺寸
-- **layout:** 将监控页面固定为 1300x1000，便于后续HUD小框定位（`subject_monitor.css`）。
+- **layout:** 将监控页面固定为 1300x1000，便于后续HUD小框定位（`index.css`）。
 
 ## 2025-11-25 09:35 — 实验体HUD数据框
-- **feat:** 在监控屏轮廓周围渲染透明青色HUD数据框，连线指向轮廓标记点，显示按实验体定制的小数据点（数据源 `data/hud_frames.js`），预览界面隐藏，选中实验体显示（`subject_monitor.html`/`subject_monitor.css`/`pages/subject_monitor.js`）。
+- **feat:** 在监控屏轮廓周围渲染透明青色HUD数据框，连线指向轮廓标记点，显示按实验体定制的小数据点（数据源 `data/hud_frames.js`），预览界面隐藏，选中实验体显示（`index.html`/`index.css`/`pages/subject_monitor.js`）。
 - **docs:** `docs/systems/subject_monitor.md` 更新HUD说明。
 
 ## 2025-11-25 09:30 — 波形排版与尺寸优化
-- **ui:** 波形卡片数值移至标题右侧，并增大波形显示区域宽度/高度，提升可读性（`subject_monitor.html`/`subject_monitor.css`）。
+- **ui:** 波形卡片数值移至标题右侧，并增大波形显示区域宽度/高度，提升可读性（`index.html`/`index.css`）。
 
 ## 2025-11-25 09:30 — 波形排版与尺寸优化
-- **ui:** 波形卡片数值移至标题右侧，并增大波形显示区域宽度/高度，提升可读性（`subject_monitor.html`/`subject_monitor.css`）。
+- **ui:** 波形卡片数值移至标题右侧，并增大波形显示区域宽度/高度，提升可读性（`index.html`/`index.css`）。
 
 ## 2025-11-25 09:25 — 波形平滑跳变优化
-- **ux:** ECG/EEG 波形在体征刷新时采用平滑幅度/速度过渡，避免突兀重置，仍随数值变化（`subject_monitor.css`/`pages/subject_monitor.js`）。
+- **ux:** ECG/EEG 波形在体征刷新时采用平滑幅度/速度过渡，避免突兀重置，仍随数值变化（`index.css`/`pages/subject_monitor.js`）。
 - **docs/process:** 保持历史记录不改动，新的改动写在最新条目。
 
 ## 2025-11-25 09:19 — 波形与扫描线调整
-- **ux:** ECG/EEG 波形仅在进入单个实验体监控时显示，预览界面不展示（`subject_monitor.html`/`pages/subject_monitor.js`）。
-- **ui:** 监控屏扫描线动画覆盖整屏，从采集操作触发；右下新增 ECG/EEG 波形卡片随体征更新波速与数值（`subject_monitor.css`/`subject_monitor.html`/`pages/subject_monitor.js`）。
-- **ui:** 体征条与预览进度条配色统一（心率青、脑电紫、异化蓝；异常为红），预览模式后台刷新心率/脑电同步展示（`subject_monitor.css`/`pages/subject_monitor.js`）。
-- **fix:** 监控屏容器补充 `id="monitor-screen"`，避免动效控制报错；扫描线范围与视觉框一致（`subject_monitor.html`/`subject_monitor.css`）。
+- **ux:** ECG/EEG 波形仅在进入单个实验体监控时显示，预览界面不展示（`index.html`/`pages/subject_monitor.js`）。
+- **ui:** 监控屏扫描线动画覆盖整屏，从采集操作触发；右下新增 ECG/EEG 波形卡片随体征更新波速与数值（`index.css`/`index.html`/`pages/subject_monitor.js`）。
+- **ui:** 体征条与预览进度条配色统一（心率青、脑电紫、异化蓝；异常为红），预览模式后台刷新心率/脑电同步展示（`index.css`/`pages/subject_monitor.js`）。
+- **fix:** 监控屏容器补充 `id="monitor-screen"`，避免动效控制报错；扫描线范围与视觉框一致（`index.html`/`index.css`）。
 - **docs:** `docs/systems/subject_monitor.md` 同步波形、扫描线与预览进度条说明。
 
 ## 2025-11-23 21:31 — 采集冷却优化
@@ -67,36 +73,36 @@
 - 选择实验体后自动推进新手教程到“等待异常”步骤（`pages/subject_monitor.js`），避免卡在 Step 1。
 
 ## 2025-11-23 21:12 — 教程遮罩修复
-- 补充遮罩元素引用（`guide-overlay`），修复教程初始化报错（`subject_monitor.html`/`pages/subject_monitor.js`）。
+- 补充遮罩元素引用（`guide-overlay`），修复教程初始化报错（`index.html`/`pages/subject_monitor.js`）。
 
 ## 2025-11-23 21:11 — 教程遮罩镂空
-- 教程遮罩对高亮目标位置打孔（随目标动态调整），保证左侧列表等高亮区域完全不被遮挡，同时保持背景变暗（`subject_monitor.css`/`pages/subject_monitor.js`）。
+- 教程遮罩对高亮目标位置打孔（随目标动态调整），保证左侧列表等高亮区域完全不被遮挡，同时保持背景变暗（`index.css`/`pages/subject_monitor.js`）。
 
 ## 2025-11-23 21:08 — 教程高亮提亮
-- 保持背景遮罩变暗，但为高亮区域增加半透明底与更强光晕，确保高亮区域和提示文字清晰可见（`subject_monitor.css`）。
+- 保持背景遮罩变暗，但为高亮区域增加半透明底与更强光晕，确保高亮区域和提示文字清晰可见（`index.css`）。
 
 ## 2025-11-23 21:07 — 教程遮罩调整
-- 仅保留整体遮罩使背景变暗，`guide-card` 和 `guide-highlight` 提升层级不被遮罩，突出提示内容与高亮区域（`subject_monitor.css`）。
+- 仅保留整体遮罩使背景变暗，`guide-card` 和 `guide-highlight` 提升层级不被遮罩，突出提示内容与高亮区域（`index.css`）。
 
 ## 2025-11-23 21:05 — 教程提示无遮罩
-- 移除教程高亮的遮罩阴影，仅保留描边高亮，提示文字不再被遮挡（`subject_monitor.css`）。
+- 移除教程高亮的遮罩阴影，仅保留描边高亮，提示文字不再被遮挡（`index.css`）。
 
 ## 2025-11-23 21:03 — 教程提示框高亮
-- 教程提示框增加描边与光晕，提升对比度与可读性（`subject_monitor.css`）。
+- 教程提示框增加描边与光晕，提升对比度与可读性（`index.css`）。
 
 ## 2025-11-23 21:00 — 教程高亮可读性
-- 调整新手教程高亮遮罩为透明镂空，确保被高亮区域文本清晰可见（`subject_monitor.css`）。
+- 调整新手教程高亮遮罩为透明镂空，确保被高亮区域文本清晰可见（`index.css`）。
 
 ## 2025-11-23 20:59 — 教程引导
-- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`subject_monitor.html`/`pages/subject_monitor.js`/`subject_monitor.css`）。
+- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`index.html`/`pages/subject_monitor.js`/`index.css`）。
 - 文档同步：`docs/systems/subject_monitor.md` 补充新手教程行为。
 
 ## 2025-11-23 20:52 — 新手教程引导
-- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`subject_monitor.html`/`pages/subject_monitor.js`/`subject_monitor.css`）。
+- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`index.html`/`pages/subject_monitor.js`/`index.css`）。
 - 文档同步：`docs/systems/subject_monitor.md` 补充新手教程行为。
 
 ## 2025-11-23 20:47 — 预览内框精简
-- 移除预览舱卡内部框线，仅保留可染色的外层卡框，视觉更简洁（`subject_monitor.css`）。
+- 移除预览舱卡内部框线，仅保留可染色的外层卡框，视觉更简洁（`index.css`）。
 
 ## 2025-11-23 20:41 — 预览快捷与状态染色
 - 监控按钮区新增“快捷预览”，快速返回实验舱预览网格。
@@ -125,62 +131,62 @@
 
 ## 2024-11-24 16:30 — 波形显示范围与日志日期纠正
 - **docs/process:** 此条为新日志，保持历史记录不改动。
-- **ux:** ECG/EEG 波形仅在进入单个实验体监控时显示，预览界面不展示（`subject_monitor.html`/`pages/subject_monitor.js`）。
-- **ui:** 监控屏扫描线动画范围覆盖整个屏幕，视觉与红框一致（`subject_monitor.css`）。
-- **fix:** 监控屏容器补充 `id="monitor-screen"` 以避免动效 `classList` 报错（`subject_monitor.html`）。
-- **feat:** 点击“采集数据”触发监控屏扫描线动画一次（`pages/subject_monitor.js`/`subject_monitor.css`/`subject_monitor.html`/`docs/systems/subject_monitor.md`）。
-- **ui:** 监控界面三条大体征进度条配色与预览小条保持一致（心率青、脑电紫、异化蓝；异常时为红）（`subject_monitor.css`）。
-- **ui:** 监控屏右下新增 ECG/EEG 波形卡片，实时显示心率/脑电的波形与数值（`subject_monitor.html`/`subject_monitor.css`/`pages/subject_monitor.js`/`docs/systems/subject_monitor.md`）。
-- **ux:** 预览模式下后台定期刷新各实验体心率/脑电并同步进度条，预览卡片竖排三条无数值进度条，颜色心率青/脑电紫/异化蓝，异常时红（`pages/subject_monitor.js`/`subject_monitor.css`/`docs/systems/subject_monitor.md`）。
+- **ux:** ECG/EEG 波形仅在进入单个实验体监控时显示，预览界面不展示（`index.html`/`pages/subject_monitor.js`）。
+- **ui:** 监控屏扫描线动画范围覆盖整个屏幕，视觉与红框一致（`index.css`）。
+- **fix:** 监控屏容器补充 `id="monitor-screen"` 以避免动效 `classList` 报错（`index.html`）。
+- **feat:** 点击“采集数据”触发监控屏扫描线动画一次（`pages/subject_monitor.js`/`index.css`/`index.html`/`docs/systems/subject_monitor.md`）。
+- **ui:** 监控界面三条大体征进度条配色与预览小条保持一致（心率青、脑电紫、异化蓝；异常时为红）（`index.css`）。
+- **ui:** 监控屏右下新增 ECG/EEG 波形卡片，实时显示心率/脑电的波形与数值（`index.html`/`index.css`/`pages/subject_monitor.js`/`docs/systems/subject_monitor.md`）。
+- **ux:** 预览模式下后台定期刷新各实验体心率/脑电并同步进度条，预览卡片竖排三条无数值进度条，颜色心率青/脑电紫/异化蓝，异常时红（`pages/subject_monitor.js`/`index.css`/`docs/systems/subject_monitor.md`）。
 
 ## 2024-11-24 16:05 — 采集日志进度条 + 跳日回预览
 
-- **ui:** 采集数据日志条本身作为进度条背景，长度对应当前异化百分比，移除单独的“异化进度 +X%”文案（`pages/subject_monitor.js`/`subject_monitor.css`）。
+- **ui:** 采集数据日志条本身作为进度条背景，长度对应当前异化百分比，移除单独的“异化进度 +X%”文案（`pages/subject_monitor.js`/`index.css`）。
 - **ux:** 点击“下一天”后自动返回预览界面，便于日切后重新选择实验体（`pages/subject_monitor.js`）。
 - **docs:** `docs/systems/subject_monitor.md` 更新采集日志高亮说明。
-- **ui:** 预览卡片右下角新增 3 条无数值进度条，分别对应最近记录的心率、脑电和异化程度（`pages/subject_monitor.js`/`subject_monitor.css`/`docs/systems/subject_monitor.md`）。
+- **ui:** 预览卡片右下角新增 3 条无数值进度条，分别对应最近记录的心率、脑电和异化程度（`pages/subject_monitor.js`/`index.css`/`docs/systems/subject_monitor.md`）。
 
 ## 2024-11-24 16:00 — 采集日志进度条
 
-- **ui:** 采集数据日志新增异化进度条直观显示当前异化百分比；保留淡青高亮样式（`pages/subject_monitor.js`/`subject_monitor.css`）。
+- **ui:** 采集数据日志新增异化进度条直观显示当前异化百分比；保留淡青高亮样式（`pages/subject_monitor.js`/`index.css`）。
 - **docs:** `docs/systems/subject_monitor.md` 更新采集日志高亮说明。
 
 ## 2024-11-24 15:55 — 采集日志精简与样式更新
 
-- **ui:** 采集数据日志不再附带剩余许可与研究进度，仅保留采集核心信息；采集日志样式更新为淡青描边与柔和背景，进一步区隔普通记录（`pages/subject_monitor.js`/`subject_monitor.css`）。
+- **ui:** 采集数据日志不再附带剩余许可与研究进度，仅保留采集核心信息；采集日志样式更新为淡青描边与柔和背景，进一步区隔普通记录（`pages/subject_monitor.js`/`index.css`）。
 - **docs:** `docs/systems/subject_monitor.md` 增补采集日志高亮说明。
 
 ## 2024-11-24 15:50 — 采集日志高亮
 
-- **ui:** 采集数据生成的日志添加专属高亮条与淡蓝背景，便于从普通记录中区分（`subject_monitor.js`/`subject_monitor.css`）。
+- **ui:** 采集数据生成的日志添加专属高亮条与淡蓝背景，便于从普通记录中区分（`subject_monitor.js`/`index.css`）。
 
 ## 2024-11-24 15:45 — 提示图标样式同步
 
-- **ui:** 信息提示圈统一字体/字重并关闭父级大写影响，确保三处提示均显示为小写“i”（`subject_monitor.css`）。
+- **ui:** 信息提示圈统一字体/字重并关闭父级大写影响，确保三处提示均显示为小写“i”（`index.css`）。
 
 ## 2024-11-24 15:42 — 提示图标样式
 
-- **ui:** 信息提示圈采用正文字体与较粗笔画，显示为小写 “i” 而非看似大写 “I”，提升辨识度（`subject_monitor.css`）。
+- **ui:** 信息提示圈采用正文字体与较粗笔画，显示为小写 “i” 而非看似大写 “I”，提升辨识度（`index.css`）。
 
 ## 2024-11-24 15:40 — 提示气泡补充
 
-- **ui:** 在实验体列表与监控日志标题旁添加信息提示：说明异化满值后不可采集/刷新，以及日志颜色含义（红=异常高风险，橙=次级风险，常规=普通记录）。（`subject_monitor.html`）
+- **ui:** 在实验体列表与监控日志标题旁添加信息提示：说明异化满值后不可采集/刷新，以及日志颜色含义（红=异常高风险，橙=次级风险，常规=普通记录）。（`index.html`）
 
 ## 2024-11-24 15:35 — 稳定剂提示修复
 
-- **ui:** 稳定剂提示改为单一圆圈“i”，悬停出现自定义说明气泡，避免双圈且确保提示可见（`subject_monitor.html`/`subject_monitor.css`）。
+- **ui:** 稳定剂提示改为单一圆圈“i”，悬停出现自定义说明气泡，避免双圈且确保提示可见（`index.html`/`index.css`）。
 
 ## 2024-11-24 15:30 — 稳定剂提示
 
-- **ui:** 稳定剂右侧新增“？(信息)”圆形提示，悬停显示说明（`subject_monitor.html`/`subject_monitor.css`）。
+- **ui:** 稳定剂右侧新增“？(信息)”圆形提示，悬停显示说明（`index.html`/`index.css`）。
 
 ## 2024-11-24 15:27 — 资源区间距调整
 
-- **ui:** 资源区对齐方式改为紧凑左对齐，使“采集许可”与数值紧贴展示（`subject_monitor.css`）。
+- **ui:** 资源区对齐方式改为紧凑左对齐，使“采集许可”与数值紧贴展示（`index.css`）。
 
 ## 2024-11-24 15:25 — 资源区文案收紧
 
-- **ui:** 采集许可文案去除括号与每日次数说明，稳定剂/许可保持紧凑单行展示（`subject_monitor.html`/`subject_monitor.css`）。
+- **ui:** 采集许可文案去除括号与每日次数说明，稳定剂/许可保持紧凑单行展示（`index.html`/`index.css`）。
 
 ## 2024-11-24 15:20 — 采集许可与稳定剂、研究进度
 
@@ -275,35 +281,35 @@
 - 选择实验体后自动推进新手教程到“等待异常”步骤（`pages/subject_monitor.js`），避免卡在 Step 1。
 
 ## 2025-11-23 21:12 — 教程遮罩修复
-- 补充遮罩元素引用（`guide-overlay`），修复教程初始化报错（`subject_monitor.html`/`pages/subject_monitor.js`）。
+- 补充遮罩元素引用（`guide-overlay`），修复教程初始化报错（`index.html`/`pages/subject_monitor.js`）。
 
 ## 2025-11-23 21:11 — 教程遮罩镂空
-- 教程遮罩对高亮目标位置打孔（随目标动态调整），保证左侧列表等高亮区域完全不被遮挡，同时保持背景变暗（`subject_monitor.css`/`pages/subject_monitor.js`）。
+- 教程遮罩对高亮目标位置打孔（随目标动态调整），保证左侧列表等高亮区域完全不被遮挡，同时保持背景变暗（`index.css`/`pages/subject_monitor.js`）。
 
 ## 2025-11-23 21:08 — 教程高亮透光
-- 降低整体遮罩透明度、移除高亮底色并强化光晕，保证左侧列表等被高亮区域更易看清（`subject_monitor.css`）。
+- 降低整体遮罩透明度、移除高亮底色并强化光晕，保证左侧列表等被高亮区域更易看清（`index.css`）。
 
 ## 2025-11-23 21:07 — 教程高亮提亮
-- 保持背景遮罩变暗，但为高亮区域增加半透明底与更强光晕，确保高亮区域和提示文字清晰可见（`subject_monitor.css`）。
+- 保持背景遮罩变暗，但为高亮区域增加半透明底与更强光晕，确保高亮区域和提示文字清晰可见（`index.css`）。
 
 ## 2025-11-23 21:05 — 教程遮罩调整
-- 仅保留整体遮罩使背景变暗，`guide-card` 和 `guide-highlight` 提升层级不被遮罩，突出提示内容与高亮区域（`subject_monitor.css`）。
+- 仅保留整体遮罩使背景变暗，`guide-card` 和 `guide-highlight` 提升层级不被遮罩，突出提示内容与高亮区域（`index.css`）。
 
 ## 2025-11-23 21:03 — 教程提示无遮罩
-- 移除教程高亮的遮罩阴影，仅保留描边高亮，提示文字不再被遮挡（`subject_monitor.css`）。
+- 移除教程高亮的遮罩阴影，仅保留描边高亮，提示文字不再被遮挡（`index.css`）。
 
 ## 2025-11-23 21:00 — 教程提示框高亮
-- 教程提示框增加描边与光晕，提升对比度与可读性（`subject_monitor.css`）。
+- 教程提示框增加描边与光晕，提升对比度与可读性（`index.css`）。
 
 ## 2025-11-23 20:59 — 教程高亮可读性
-- 调整新手教程高亮遮罩为透明镂空，确保被高亮区域文本清晰可见（`subject_monitor.css`）。
+- 调整新手教程高亮遮罩为透明镂空，确保被高亮区域文本清晰可见（`index.css`）。
 
 ## 2025-11-23 20:52 — 新手教程引导
-- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`subject_monitor.html`/`pages/subject_monitor.js`/`subject_monitor.css`）。
+- 新增遮罩式新手教程，步骤覆盖选择实验体、等待异常、采集数据、异化进度、快捷预览，高亮目标区域，可跳过/返回（`index.html`/`pages/subject_monitor.js`/`index.css`）。
 - 文档同步：`docs/systems/subject_monitor.md` 补充新手教程行为。
 
 ## 2025-11-23 20:47 — 预览内框精简
-- 移除预览舱卡内部框线，仅保留可染色的外层卡框，视觉更简洁（`subject_monitor.css`）。
+- 移除预览舱卡内部框线，仅保留可染色的外层卡框，视觉更简洁（`index.css`）。
 
 ## 2025-11-23 20:41 — 预览快捷与状态染色
 - 监控按钮区新增“快捷预览”，快速返回实验舱预览网格。
@@ -338,7 +344,7 @@
 - 文档更新：`subject_monitor.md` 同步上述行为与展示文案。 
 
 ## 2024-11-23 — 架构模块化与清理
-- 入口与模块：`subject_monitor.html` 改用 `<script type="module">` 加载 `pages/subject_monitor.js`，主逻辑拆分到模块。
+- 入口与模块：`index.html` 改用 `<script type="module">` 加载 `pages/subject_monitor.js`，主逻辑拆分到模块。
 - 时间与数据：时间系统抽成 `modules/time.js` 并暴露订阅接口；实验体与日常状态池移到 `data/subjects.js`。
 - 资源清理：删除演示文件 `time_system.html`/`time_system.css`，统一使用模块化时间栏。
 - 文档：新增 `architecture.md` 说明分层，`time_system.md` 描述模块用法，本文件追加本次改动记录。 
@@ -355,4 +361,4 @@
 - 日志系统优化：普通日志上限 20 条；异常日志持久保存，使用同一日志框切换查看。
 - 预览与监控：预览四宫格显示红外轮廓并具备柔和动态；监控屏展示不同实验体红外图，支持采集/刷新体征。
 - 文档更新：`subject_monitor.md` 补充上述逻辑、UI 状态与扩展说明。 
-- 样式与时间系统：样式抽离至 `subject_monitor.css` 便于审查； 
+- 样式与时间系统：样式抽离至 `index.css` 便于审查； 

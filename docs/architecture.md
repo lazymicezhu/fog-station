@@ -1,10 +1,10 @@
 # 架构说明（Fog-station 前端原型）
 
-- **页面层**：每个系统一个页面文件（例：`subject_monitor.html`），只负责布局容器与引入对应入口脚本。
+- **页面层**：每个系统一个页面文件（例：`index.html`），只负责布局容器与引入对应入口脚本。
 - **入口脚本**：放在 `pages/`（例：`pages/subject_monitor.js`），以 ES Module 形式运行，负责绑定 DOM、调用功能模块。
 - **功能模块**：放在 `modules/`，可复用的系统能力（例：`modules/time.js` 提供游戏时间流与跳日事件）。
 - **数据层**：放在 `data/`，静态配置与文案（例：`data/subjects.js` 定义实验体、每日状态池）。
-- **样式层**：当前样式集中在 `subject_monitor.css`；后续可拆为 `styles/base.css`（通用）+ 各页面样式。
+- **样式层**：当前样式集中在 `index.css`；后续可拆为 `styles/base.css`（通用）+ 各页面样式。
 
 ## 时间与日志
 - 全局时间由 `modules/time.js` 管理，1 秒现实=2 分钟游戏，时间栏以每 0.5 秒 +1 分钟跳动呈现，支持自动进位与手动跳日。
