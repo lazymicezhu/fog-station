@@ -1,14 +1,36 @@
 
 // modules/login.js
 
+function typewriter(element, text, speed = 50, callback = null) {
+  if (!element) return;
+  element.textContent = '';
+  element.classList.add('typewriter');
+  let i = 0;
+  
+  // Clear any existing interval
+  if (element.dataset.typewriterInterval) {
+    clearInterval(parseInt(element.dataset.typewriterInterval));
+  }
+
+  const interval = setInterval(() => {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+    } else {
+      clearInterval(interval);
+      delete element.dataset.typewriterInterval;
+      element.classList.remove('typewriter'); // Remove cursor after done (optional)
+      if (callback) callback();
+    }
+  }, speed);
+  
+  element.dataset.typewriterInterval = interval.toString();
+}
+
 export function initLoginSystem() {
   const overlay = document.getElementById('login-overlay');
   if (!overlay) return;
 
-  // Check if already logged in (optional: strictly speaking the prompt implies a login screen every time, 
-  // but usually "terminals" remember sessions. Let's do a quick check: 
-  // If user exists, maybe pre-fill or show "Welcome back". 
-  // For this request, let's force the cool login sequence but pre-fill if available.)
   const savedUser = localStorage.getItem('fog_station_user');
   let userData = savedUser ? JSON.parse(savedUser) : null;
 
@@ -17,6 +39,7 @@ export function initLoginSystem() {
   const stepAuth = document.getElementById('step-auth');
   const stepProfile = document.getElementById('step-profile');
   const btnVerify = document.getElementById('btn-verify');
+  const statusLine = document.getElementById('login-status');
   
   const inputDesc = document.getElementById('login-desc');
   const btnComplete = document.getElementById('btn-complete-login');
@@ -27,15 +50,16 @@ export function initLoginSystem() {
   
   let currentAvatar = userData?.avatar || 'arts/派蒙1.jpeg';
 
+  // Initial Typewriter Status
+  typewriter(statusLine, '系统待机中... 正在初始化安全协议...', 30);
+
   // Pre-fill if exists
   if (userData) {
     inputUser.value = userData.username || '';
-    // Don't pre-fill password for "security" theater
     inputDesc.value = userData.description || '';
     currentAvatar = userData.avatar;
     avatarPreview.src = currentAvatar;
   } else {
-    // Default avatar state
     avatarPreview.src = currentAvatar;
   }
 
@@ -46,21 +70,31 @@ export function initLoginSystem() {
     const pass = inputPass.value.trim();
     
     if (!user || !pass) {
-      showError('请输入完整凭据');
+      showError('错误：请输入完整凭据');
       return;
     }
     
     // Simulate verification delay
-    btnVerify.textContent = 'VERIFYING...';
+    btnVerify.textContent = '验证中...';
     btnVerify.disabled = true;
+    typewriter(statusLine, '正在连接中央数据库... 验证身份哈希...', 20);
     
     setTimeout(() => {
-        // "Success" - reveal step 2
-        stepAuth.classList.add('hidden');
-        stepProfile.classList.remove('hidden');
-        // Focus next input
-        inputDesc.focus();
-    }, 800);
+        typewriter(statusLine, '身份验证通过。需要完善档案信息。', 30);
+        
+        // "Success" - reveal step 2 with fade
+        stepAuth.style.opacity = '0';
+        setTimeout(() => {
+            stepAuth.classList.add('hidden');
+            stepProfile.classList.remove('hidden');
+            stepProfile.style.opacity = '0';
+            requestAnimationFrame(() => {
+                stepProfile.style.transition = 'opacity 0.5s ease';
+                stepProfile.style.opacity = '1';
+            });
+            inputDesc.focus();
+        }, 400); // Wait for opacity transition
+    }, 1200);
   }
 
   btnVerify.addEventListener('click', handleAuth);
@@ -70,31 +104,28 @@ export function initLoginSystem() {
 
   // --- Step 2: Profile & Avatar ---
 
-  // Avatar: Upload
   avatarUpload.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        currentAvatar = evt.target.result; // Base64
+        currentAvatar = evt.target.result;
         avatarPreview.src = currentAvatar;
       };
       reader.readAsDataURL(file);
     }
   });
 
-  // Avatar: Default
   btnUseDefault.addEventListener('click', () => {
     currentAvatar = 'arts/派蒙1.jpeg';
     avatarPreview.src = currentAvatar;
-    // Reset file input
     avatarUpload.value = '';
   });
 
   function completeLogin() {
     const desc = inputDesc.value.trim();
     if (!desc) {
-      showError('请填写描述');
+      showError('错误：请填写描述');
       return;
     }
 
@@ -105,22 +136,22 @@ export function initLoginSystem() {
       lastLogin: new Date().toISOString()
     };
 
-    // Save
     localStorage.setItem('fog_station_user', JSON.stringify(finalUserData));
-    
-    // Update global UI (Paimon/User info if applicable)
     updateGameUI(finalUserData);
 
     // Animation Out
-    overlay.classList.add('access-granted');
+    typewriter(statusLine, '配置完成。欢迎回来，研究员。', 30);
+    document.querySelector('.terminal-window').classList.add('success');
     
     setTimeout(() => {
-        overlay.style.display = 'none';
-        // Trigger any game start logic if needed
-        if (typeof window.resetPaimonWidget === 'function') {
-          window.resetPaimonWidget();
-        }
-    }, 1500);
+        overlay.classList.add('access-granted');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            if (typeof window.resetPaimonWidget === 'function') {
+              window.resetPaimonWidget();
+            }
+        }, 800); // Faster exit
+    }, 1000);
   }
 
   btnComplete.addEventListener('click', completeLogin);
@@ -129,10 +160,14 @@ export function initLoginSystem() {
   });
 }
 
-function showError(code) {
+function showError(text) {
   const el = document.getElementById('login-status');
   if (el) {
-    el.textContent = `错误：${code}`;
+    // Stop any existing typewriter
+    if (el.dataset.typewriterInterval) clearInterval(parseInt(el.dataset.typewriterInterval));
+    el.classList.remove('typewriter');
+    
+    el.textContent = text;
     el.classList.add('blink');
     setTimeout(() => el.classList.remove('blink'), 500);
   }
