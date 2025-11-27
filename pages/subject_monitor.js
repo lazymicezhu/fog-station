@@ -4,7 +4,7 @@ import { hudFrames } from "../data/hud_frames.js";
 import { paimonMessages, paimonAlertText } from "../data/paimon_messages.js";
 import { initPlayerSubjects, getPlayerSubjects, getEnemyPool, SubjectInstance } from '../modules/cultivation.js';
 import { CombatSession } from '../modules/combat.js';
-import { SKILL_DB } from '../data/combat_data.js';
+import { SKILL_DB, ELEMENT_NAMES } from '../data/combat_data.js';
 
 const subjects = subjectSeed.map(s => ({
   ...s,
@@ -366,15 +366,15 @@ function addLogForSubject(subjectId, text, alert = false, color = null, kind = n
 
 btnSample.addEventListener("click", () => {
   if (!currentSubject) {
-    alert("请先选择一个实验体。");
+    sysAlert("请先选择一个实验体。");
     return;
   }
   if (isSubjectLost(currentSubject)) {
-    alert("观测结果已丢失。");
+    sysAlert("观测结果已丢失。");
     return;
   }
   if (samplePermits <= 0) {
-    alert("今日采集许可已用尽。");
+    sysAlert("今日采集许可已用尽。");
     return;
   }
 
@@ -456,11 +456,11 @@ btnSample.addEventListener("click", () => {
 
 btnRandom.addEventListener("click", () => {
   if (!currentSubject) {
-    alert("请先选择一个实验体。");
+    sysAlert("请先选择一个实验体。");
     return;
   }
   if (isSubjectLost(currentSubject)) {
-    alert("观测结果已丢失。");
+    sysAlert("观测结果已丢失。");
     return;
   }
   handleTestSequence("random");
@@ -476,15 +476,15 @@ btnAlertLog.addEventListener("click", () => {
 
 btnStabilizer?.addEventListener("click", () => {
   if (!currentSubject) {
-    alert("请先选择一个实验体。");
+    sysAlert("请先选择一个实验体。");
     return;
   }
   if (isSubjectLost(currentSubject)) {
-    alert("观测结果已丢失。");
+    sysAlert("观测结果已丢失。");
     return;
   }
   if (stabilizerCount <= 0) {
-    alert("稳定剂已用尽。");
+    sysAlert("稳定剂已用尽。");
     return;
   }
   if (stabilizerArmed) return;
@@ -513,7 +513,7 @@ guideSkip?.addEventListener("click", () => {
 btnNextDay.addEventListener("click", () => {
   const { minutes } = time.getTime();
   if (minutes < NEXT_DAY_UNLOCK_MINUTES && samplePermits > 0) {
-    alert("需到 12:00 或耗尽采集许可后才能进入下一天。");
+    sysAlert("需到 12:00 或耗尽采集许可后才能进入下一天。");
     return;
   }
   pendingDayChangeReason = "manual";
@@ -1282,7 +1282,11 @@ if (btnCombatEntry) {
 if (btnCombatExit) {
     btnCombatExit.addEventListener('click', () => {
         if (currentCombat && currentCombat.state !== 'END_WIN' && currentCombat.state !== 'END_LOSS') {
-             if(!confirm(战斗正在进行中，断开��接将被视为逃跑。确定吗？)) return;
+             sysConfirm("战斗正在进行中，断开连接将被视为逃跑。确定吗？", () => {
+            combatOverlay.classList.add('hidden');
+            currentCombat = null;
+        });
+        return;
         }
         combatOverlay.classList.add('hidden');
         currentCombat = null;
@@ -1348,7 +1352,7 @@ function renderCombatUI(session) {
     
     // Enemy
     const eName = document.getElementById('enemy-name');
-    if (eName) eName.textContent = session.enemy.getName();
+    if (eName) eName.textContent = `${session.enemy.getName()} [${ELEMENT_NAMES[session.enemy.element]}]`;
     
     const eHp = session.enemy.currentHp;
     const eMax = session.enemy.getMaxHp();
@@ -1359,7 +1363,7 @@ function renderCombatUI(session) {
     
     // Player
     const pName = document.getElementById('player-name');
-    if (pName) pName.textContent = session.player.getName();
+    if (pName) pName.textContent = `${session.player.getName()} [${ELEMENT_NAMES[session.player.element]}]`;
     
     const pHp = session.player.currentHp;
     const pMax = session.player.getMaxHp();
@@ -1375,3 +1379,226 @@ function renderCombatUI(session) {
         btn.disabled = locked;
     });
 }
+
+/* ---
+  MANAGEMENT UI & ANIMATION HANDLERS
+--- */
+const btnOpenManage = document.getElementById('btn-open-management');
+const btnCloseManage = document.getElementById('btn-close-management');
+const manageOverlay = document.getElementById('management-overlay');
+const manageList = document.getElementById('management-list');
+
+if (btnOpenManage) {
+    btnOpenManage.addEventListener('click', () => {
+        renderManagementUI();
+        manageOverlay.classList.remove('hidden');
+    });
+}
+
+if (btnCloseManage) {
+    btnCloseManage.addEventListener('click', () => {
+        manageOverlay.classList.add('hidden');
+    });
+}
+
+function renderManagementUI() {
+    manageList.innerHTML = '';
+    const players = getPlayerSubjects();
+    
+    players.forEach(subj => {
+        const item = document.createElement('div');
+        item.className = 'manage-item';
+        
+        const form = subj.getCurrentForm();
+        const maxXp = form.xpMax;
+        const xpPercent = maxXp > 0 ? (subj.xp / maxXp * 100).toFixed(1) : 100;
+        
+        const skillsContainer = document.createElement('div');
+        skillsContainer.className = 'manage-skills';
+        
+        subj.getSkills().forEach(sid => {
+            const skill = SKILL_DB[sid];
+            if(skill) {
+                const tag = document.createElement('span');
+                tag.className = 'skill-tag';
+                tag.textContent = skill.name;
+                tag.title = skill.desc;
+                tag.style.cursor = 'pointer';
+                tag.onclick = () => sysAlert(`【${skill.name}】\n${skill.desc}`);
+                skillsContainer.appendChild(tag);
+            }
+        });
+
+        item.innerHTML = `
+            <div class="manage-info">
+                <div class="manage-name">${subj.getName()} <span style="font-size:12px;color:#8b949e">[${ELEMENT_NAMES[subj.element]}]</span></div>
+                <div class="manage-stat">形态: ${subj.formIndex + 1} / ${subj.getTemplate().forms.length}</div>
+                <div class="manage-stat">HP: ${subj.currentHp} / ${subj.getMaxHp()}</div>
+                <div class="manage-stat">XP: ${subj.xp} / ${maxXp || 'MAX'} (${xpPercent}%)</div>
+            </div>
+        `;
+        item.querySelector('.manage-info').appendChild(skillsContainer);
+        manageList.appendChild(item);
+    });
+}
+
+// 覆写 startCombatEncounter 以支持回调和所有技能
+window.startCombatEncounter = function() {
+    combatOverlay.classList.remove('hidden');
+    
+    const players = getPlayerSubjects();
+    const playerSubj = players[0]; 
+    if (playerSubj.currentHp <= 0) playerSubj.currentHp = playerSubj.getMaxHp(); 
+
+    const pool = getEnemyPool();
+    const enemyTemplate = pool[Math.floor(Math.random() * pool.length)];
+    const enemySubj = new SubjectInstance(enemyTemplate.id);
+    
+    const logEl = document.getElementById('combat-log');
+    const skillPanel = document.getElementById('skill-panel');
+    
+    logEl.innerHTML = ''; 
+    skillPanel.innerHTML = ''; 
+    
+    const appendLog = (text) => {
+        const div = document.createElement('div');
+        div.className = 'log-line';
+        div.textContent = text;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+    
+    const updateUI = () => {
+        renderCombatUI(currentCombat);
+    };
+    
+    // Animation Handler
+    const handleEvent = async (type, data) => {
+        if (type === 'coin_toss_start') {
+            // Show overlay
+            let coin = document.querySelector('.coin-overlay');
+            if (!coin) {
+                coin = document.createElement('div');
+                coin.className = 'coin-overlay';
+                coin.innerHTML = '<div class="coin flipping">?</div>';
+                document.querySelector('.combat-terminal').appendChild(coin);
+            }
+            await new Promise(r => setTimeout(r, 1500));
+            coin.remove();
+        }
+        if (type === 'coin_toss_result') {
+             // Optional: Show result coin
+        }
+        if (type === 'damage' || type === 'heal') {
+            const targetEl = data.target === 'player' ? document.querySelector('.player .unit-sprite') : document.querySelector('.enemy .unit-sprite');
+            if (targetEl) {
+                const float = document.createElement('div');
+                float.className = `damage-text ${type === 'heal' ? 'heal' : ''}`;
+                float.textContent = data.val;
+                float.style.left = '50%';
+                float.style.top = '0';
+                targetEl.appendChild(float);
+                setTimeout(() => float.remove(), 1000);
+            }
+        }
+    };
+    
+    currentCombat = new CombatSession(playerSubj, enemySubj, appendLog, updateUI, handleEvent);
+    
+    // Render ALL Skills
+    const skills = playerSubj.getSkills();
+    skills.forEach(skillId => {
+        const skill = SKILL_DB[skillId];
+        if (!skill) return;
+        
+        const btn = document.createElement('button');
+        btn.className = 'btn-skill';
+        
+        btn.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:flex-start;">
+                <span style="font-weight:bold">${skill.name}</span>
+                <span style="font-size:10px;color:#8b949e">${skill.desc}</span>
+            </div>
+        `;
+        btn.onclick = () => {
+            currentCombat.playerAction(skillId);
+        };
+        skillPanel.appendChild(btn);
+    });
+    
+    currentCombat.start();
+};
+
+// Hook into renderSubjectList to sync names
+// Use a flag to prevent infinite recursion if we call it immediately
+if (typeof originalRenderSubjectList === 'undefined') {
+    window.originalRenderSubjectList = renderSubjectList; // Backup
+}
+
+renderSubjectList = function() {
+    subjectListEl.innerHTML = "";
+    const players = getPlayerSubjects();
+    
+    subjects.forEach((s, index) => {
+        // Try find combat instance
+        const combatInst = players.find(p => p.templateId === s.id);
+        const displayName = combatInst ? combatInst.getName() : s.name;
+        
+        const item = document.createElement("div");
+        item.className = "subject-item";
+        item.dataset.id = s.id;
+        item.innerHTML = `
+          <div class="subject-id">${s.id}</div>
+          <div class="subject-name">${displayName}</div>
+          <div class="subject-meta">RW 注射：${s.rwDuration}</div>
+        `;
+        item.addEventListener("click", () => selectSubject(index));
+        subjectListEl.appendChild(item);
+    });
+};
+// Re-render immediately to apply name sync
+renderSubjectList();
+
+/* ---
+  SYSTEM MODAL
+--- */
+const modalEl = document.getElementById('system-modal');
+const modalTitle = document.getElementById('modal-title');
+const modalText = document.getElementById('modal-text');
+const btnModalConfirm = document.getElementById('modal-btn-confirm');
+const btnModalCancel = document.getElementById('modal-btn-cancel');
+
+function showModal(text, isConfirm = false, onConfirm = null) {
+    if (!modalEl) return;
+    modalText.textContent = text;
+    modalTitle.textContent = isConfirm ? '系统确认' : '系统提示';
+    
+    if (isConfirm) {
+        btnModalCancel.classList.remove('hidden');
+    } else {
+        btnModalCancel.classList.add('hidden');
+    }
+    
+    // Cleanup old listeners by cloning
+    const oldConfirm = document.getElementById('modal-btn-confirm');
+    const newConfirm = oldConfirm.cloneNode(true);
+    oldConfirm.parentNode.replaceChild(newConfirm, oldConfirm);
+    
+    const oldCancel = document.getElementById('modal-btn-cancel');
+    const newCancel = oldCancel.cloneNode(true);
+    oldCancel.parentNode.replaceChild(newCancel, oldCancel);
+    
+    newConfirm.onclick = () => {
+        modalEl.classList.add('hidden');
+        if (onConfirm) onConfirm();
+    };
+    
+    newCancel.onclick = () => {
+        modalEl.classList.add('hidden');
+    };
+    
+    modalEl.classList.remove('hidden');
+}
+
+window.sysAlert = (text) => showModal(text, false);
+window.sysConfirm = (text, callback) => showModal(text, true, callback);

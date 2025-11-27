@@ -3,27 +3,33 @@ import { ELEMENT_CHART, SKILL_DB } from '../data/combat_data.js';
 import { savePlayerSubjects } from './cultivation.js';
 
 export class CombatSession {
-    constructor(playerSubject, enemySubject, onLog, onUpdate) {
+    constructor(playerSubject, enemySubject, onLog, onUpdate, onEvent) {
         this.player = playerSubject;
         this.enemy = enemySubject;
         this.onLog = onLog;
         this.onUpdate = onUpdate;
+        this.onEvent = onEvent || (() => {}); // New callback for effects
         
         this.turnCount = 1;
-        this.state = 'INIT'; // INIT, PLAYER_ACT, ENEMY_ACT, END_WIN, END_LOSS
+        this.state = 'INIT'; 
         
-        // Minimal buff tracking for now
         this.buffs = { player: [], enemy: [] };
     }
 
-    start() {
+    async start() {
         this.onLog(`--- 遭遇异常实体 ---`);
         this.onLog(`目标: ${this.enemy.getName()} (HP: ${this.enemy.currentHp}/${this.enemy.getMaxHp()})`);
         this.onLog(`出战: ${this.player.getName()} (HP: ${this.player.currentHp}/${this.player.getMaxHp()})`);
         
-        // Coin toss for initiative
+        // Coin Toss Animation
+        this.onLog("正在判定行动顺序...");
+        if (this.onEvent) await this.onEvent('coin_toss_start');
+        
         const playerFirst = Math.random() > 0.5;
-        this.onLog(playerFirst ? "系统判定：己方先手" : "系统判定：敌方先手");
+        
+        if (this.onEvent) await this.onEvent('coin_toss_result', playerFirst);
+        
+        this.onLog(playerFirst ? "判定结果：己方先手" : "判定结果：敌方先手");
         
         this.state = playerFirst ? 'PLAYER_ACT' : 'ENEMY_ACT';
         this.nextTurn();
@@ -33,27 +39,26 @@ export class CombatSession {
         if (this.checkEnd()) return;
 
         if (this.state === 'ENEMY_ACT') {
-            // Enemy thinks for a bit
             setTimeout(() => this.enemyAction(), 1200);
         } else {
-            this.onLog(`\n[第 ${this.turnCount} 回合] 等待指令...`);
-            this.onUpdate(); // Unlock UI for player input
+            this.onLog(`
+[第 ${this.turnCount} 回合] 等待指令...`);
+            this.onUpdate(); 
         }
     }
 
     playerAction(skillId) {
-        if (this.state !== 'PLAYER_ACT') return;
+        if (this.state !== 'PLAYER_ACT') return; 
         
         this.executeSkill(this.player, this.enemy, skillId);
         if (this.checkEnd()) return;
         
         this.state = 'ENEMY_ACT';
-        this.nextTurn(); // Proceed
+        this.nextTurn(); 
     }
 
     enemyAction() {
         const skills = this.enemy.getSkills();
-        // Simple AI: Random skill
         const randomSkill = skills[Math.floor(Math.random() * skills.length)];
         this.executeSkill(this.enemy, this.player, randomSkill);
         
@@ -66,18 +71,14 @@ export class CombatSession {
 
     executeSkill(attacker, defender, skillId) {
         const skill = SKILL_DB[skillId];
-        if (!skill) {
-            this.onLog(`${attacker.getName()} 似乎有些困惑。`);
-            return;
-        }
+        if (!skill) return;
 
         this.onLog(`> ${attacker.getName()} 使用了 [${skill.name}]`);
 
         // 1. Calc Damage
-        if (skill.type.includes('damage')) {
+        if (skill.type.includes('damage') || skill.type === 'special') {
             let dmg = skill.val || 0;
             
-            // Special Logic: Coin Toss
             if (skill.logic === 'coin_toss_3_times') {
                 let heads = 0;
                 let results = [];
@@ -89,7 +90,6 @@ export class CombatSession {
                 this.onLog(`  硬币判定：${results.join('')} -> ${heads}倍伤害`);
             }
 
-            // Element Multiplier
             const multiplier = this.getElementMultiplier(attacker.element, defender.element);
             if (multiplier > 1.0) {
                 dmg *= multiplier;
@@ -101,28 +101,30 @@ export class CombatSession {
 
             dmg = Math.floor(dmg);
             defender.currentHp = Math.max(0, defender.currentHp - dmg);
-            this.onLog(`  ${defender.getName()} 受到 ${dmg} 点伤害`);
+            
+            // Log & Visual Effect
+            this.onLog(`  💥 造成 ${dmg} 点伤害`);
+            this.onEvent('damage', { target: defender === this.player ? 'player' : 'enemy', val: dmg });
         }
         
-        // 2. Handle Self Damage / Recoil
         if (skill.type.includes('self') && skill.selfDmg) {
             attacker.currentHp = Math.max(0, attacker.currentHp - skill.selfDmg);
-            this.onLog(`  ${attacker.getName()} 受到反噬伤害 ${skill.selfDmg}`);
+            this.onLog(`  💢 受到反噬伤害 ${skill.selfDmg}`);
+            this.onEvent('damage', { target: attacker === this.player ? 'player' : 'enemy', val: skill.selfDmg });
         }
         
-        // 3. Handle Heal
          if (skill.type === 'heal') {
             const heal = skill.val;
             attacker.currentHp = Math.min(attacker.getMaxHp(), attacker.currentHp + heal);
-            this.onLog(`  ${attacker.getName()} 恢复了 ${heal} 点生命`);
+            this.onLog(`  💚 恢复了 ${heal} 点生命`);
+            this.onEvent('heal', { target: attacker === this.player ? 'player' : 'enemy', val: heal });
          }
          
-         // 4. Handle DOT (Simplified)
          if (skill.type === 'dot') {
-             this.onLog(`  ${defender.getName()} 被施加了持续伤害效果`);
+             this.onLog(`  ☠️ 施加了持续伤害`);
          }
 
-        this.onUpdate(); // Update UI bars
+        this.onUpdate(); 
     }
 
     getElementMultiplier(atkEl, defEl) {
@@ -134,17 +136,27 @@ export class CombatSession {
     checkEnd() {
         if (this.player.currentHp <= 0) {
             this.state = 'END_LOSS';
-            this.onLog(`\n!!! 警报：${this.player.getName()} 生命反应消失`);
+            this.onLog(`
+!!! 警报：${this.player.getName()} 生命反应消失`);
             this.onLog(`战斗结束。任务失败。`);
+            
+            // Full Heal on Loss
+            this.player.currentHp = this.player.getMaxHp();
+            this.onLog(`系统：${this.player.getName()} 生命值已重置（模拟训练保护）。`);
+            
             this.onUpdate();
             return true;
         }
         if (this.enemy.currentHp <= 0) {
             this.state = 'END_WIN';
-            this.onLog(`\n目标 ${this.enemy.getName()} 已被压制。`);
+            this.onLog(`
+目标 ${this.enemy.getName()} 已被压制。`);
             this.onLog(`战斗胜利。`);
             
-            // Reward
+            // Full Heal on Win (Requested Feature)
+            this.player.currentHp = this.player.getMaxHp();
+            this.onLog(`系统：${this.player.getName()} 生命值已完全恢复。`);
+
             const xpGain = 400; 
             this.onLog(`获得经验值: ${xpGain}`);
             const res = this.player.gainXp(xpGain);

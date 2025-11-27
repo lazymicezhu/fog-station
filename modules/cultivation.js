@@ -91,7 +91,8 @@ export function initPlayerSubjects() {
     // For demo, if empty, give player default team
     if (playerSubjects.length === 0) {
         playerSubjects.push(new SubjectInstance('S-01')); // Psychic
-        playerSubjects.push(new SubjectInstance('S-32')); // Alloy
+        playerSubjects.push(new SubjectInstance('S-07')); // Quantum
+        playerSubjects.push(new SubjectInstance('S-13')); // Fire
         savePlayerSubjects();
     }
 }

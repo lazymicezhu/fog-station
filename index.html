@@ -204,7 +204,6 @@
 
       <div class="monitor-buttons">
         <button class="btn" id="btn-preview">快捷预览</button>
-        <button class="btn" id="btn-combat-entry">神经同步</button>
         <button class="btn" id="btn-sample">采集数据</button>
         <button class="btn" id="btn-random">刷新生命体征</button>
       </div>
@@ -233,6 +232,12 @@
     </div>
     <div class="paimon-message" id="paimon-message">保持监控</div>
   </div>
+  
+  <!-- 独立功能入口 -->
+  <div class="floating-menu">
+    <button id="btn-open-management" class="btn-float">实验体管理</button>
+    <button id="btn-combat-entry" class="btn-float btn-combat">神经同步</button>
+  </div>
 </div>
 
 <!-- 新手教程遮罩 -->
@@ -245,6 +250,19 @@
       <button class="btn" id="guide-prev">上一步</button>
       <button class="btn" id="guide-next">下一步</button>
       <button class="btn" id="guide-skip">跳过教程</button>
+    </div>
+  </div>
+</div>
+
+<!-- Management Overlay -->
+<div id="management-overlay" class="overlay-panel hidden">
+  <div class="panel-window">
+    <div class="panel-header">
+      <span>SUBJECT MANAGEMENT</span>
+      <button id="btn-close-management" class="btn-close">CLOSE</button>
+    </div>
+    <div class="panel-body" id="management-list">
+      <!-- Injected by JS -->
     </div>
   </div>
 </div>
@@ -294,6 +312,22 @@
       </div>
       <div class="skill-panel" id="skill-panel">
         <!-- Buttons injected by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- System Modal -->
+<div id="system-modal" class="overlay-panel hidden" style="z-index: 3000;">
+  <div class="panel-window" style="width: 400px; height: auto; min-height: 0;">
+    <div class="panel-header">
+      <span id="modal-title">系统提示</span>
+    </div>
+    <div class="panel-body" style="text-align: center; white-space: pre-wrap; padding: 24px;">
+      <p id="modal-text" style="color: #e6edf3; margin-bottom: 24px; line-height: 1.5; font-size: 14px;"></p>
+      <div style="display: flex; justify-content: center; gap: 16px;">
+        <button id="modal-btn-cancel" class="btn hidden">取消</button>
+        <button id="modal-btn-confirm" class="btn">确认</button>
       </div>
     </div>
   </div>
