@@ -9,6 +9,68 @@
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
+<!-- Login Terminal Overlay -->
+<div id="login-overlay" class="login-overlay">
+  <div class="terminal-window">
+    <div class="terminal-header">
+      <span class="blink">_</span> 终端接入点 v2.4
+    </div>
+    
+    <div class="terminal-body">
+      <div class="login-logo">
+        <div class="logo-circle"></div>
+        <div class="logo-text">BNU 实验室</div>
+      </div>
+
+      <div id="login-status" class="status-line">系统待机中...</div>
+
+      <!-- Step 1: Authentication -->
+      <div id="step-auth" class="login-step">
+        <div class="input-group">
+          <label>> 身份认证</label>
+          <input type="text" id="login-user" placeholder="用户名" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label>> 访问密钥</label>
+          <input type="password" id="login-pass" placeholder="密码">
+        </div>
+        <button id="btn-verify" class="btn-terminal">验证凭据</button>
+      </div>
+
+      <!-- Step 2: Profile Setup (Initially Hidden) -->
+      <div id="step-profile" class="login-step hidden">
+        <div class="input-group">
+          <label>> 生物特征描述</label>
+          <input type="text" id="login-desc" placeholder="一句话描述你自己..." autocomplete="off">
+        </div>
+        
+        <div class="avatar-section">
+          <label>> 助手头像选择</label>
+          <div class="avatar-controls">
+            <div class="avatar-preview-container">
+              <img id="avatar-preview-img" src="" alt="预览">
+            </div>
+            <div class="avatar-options">
+              <button id="btn-avatar-default" class="btn-terminal small">默认 (派蒙)</button>
+              <div class="file-upload-wrapper">
+                <button class="btn-terminal small">本地上传</button>
+                <input type="file" id="avatar-upload" accept="image/*">
+              </div>
+              <button class="btn-terminal small disabled" title="模块离线">AI 生成 [离线]</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-complete-login" class="btn-terminal primary">初始化连接</button>
+      </div>
+    </div>
+    
+    <div class="terminal-footer">
+      安全连接 // 已加密
+    </div>
+  </div>
+</div>
+
 <div class="app">
   <header>
     <div class="title">BNU · <span>SUBJECT MONITOR</span></div>
@@ -162,6 +224,14 @@
       <div class="log-list" id="log-list"></div>
     </aside>
   </div>
+
+  <!-- 悬浮助手 -->
+  <div class="paimon-widget" id="paimon-widget">
+    <div class="paimon-avatar" id="paimon-avatar">
+      <img src="arts/派蒙1.jpeg" alt="派蒙助手头像" draggable="false" />
+    </div>
+    <div class="paimon-message" id="paimon-message">保持监控</div>
+  </div>
 </div>
 
 <!-- 新手教程遮罩 -->
@@ -178,14 +248,10 @@
   </div>
 </div>
 
-<!-- 悬浮助手 -->
-<div class="paimon-widget" id="paimon-widget">
-  <div class="paimon-avatar" id="paimon-avatar">
-    <img src="arts/派蒙1.jpeg" alt="派蒙助手头像" draggable="false" />
-  </div>
-  <div class="paimon-message" id="paimon-message">保持监控</div>
-</div>
-
+<script type="module">
+  import { initLoginSystem } from './modules/login.js';
+  initLoginSystem();
+</script>
 <script type="module" src="pages/subject_monitor.js"></script>
 </body>
 </html>
