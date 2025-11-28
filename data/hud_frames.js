@@ -9,9 +9,9 @@ export const hudFrames = {
     { label: "脊柱", stat: "生物电导", value: "0.88", pos: { top: "48.9%", left: "40.8%" }, offset: { x: -94, y: -37 } },
     { label: "尾椎", stat: "温度", value: "36.8°C", pos: { top: "77.2%", left: "30.4%" }, offset: { x: 132.00000000000003, y: 38 } }
   ],
-  "S-13": [
-    { label: "颞叶", stat: "神经共振", value: "12.5 Hz", pos: { top: "27.5%", left: "49.4%" }, offset: { x: -110, y: -23 } },
-    { label: "胸骨", stat: "呼吸变异", value: "0.34", pos: { top: "35.5%", left: "50.8%" }, offset: { x: 142, y: 26 } },
-    { label: "掌背", stat: "皮电", value: "12 μS", pos: { top: "75.5%", left: "49.3%" }, offset: { x: -108, y: 23 } }
+  "S-32": [
+    { label: "脊柱", stat: "金属网络", value: "87.2%", pos: { top: "27.5%", left: "49.4%" }, offset: { x: -110, y: -23 } },
+    { label: "胸骨", stat: "合金密度", value: "4.2 g/cm³", pos: { top: "35.5%", left: "50.8%" }, offset: { x: 142, y: 26 } },
+    { label: "手臂", stat: "电磁场", value: "0.8 mT", pos: { top: "75.5%", left: "49.3%" }, offset: { x: -108, y: 23 } }
   ]
 };

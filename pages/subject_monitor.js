@@ -267,7 +267,7 @@ function randomizeVitals(resetShift = false) {
   const ranges = {
     "S-01": { heart: [120, 170], brain: [55, 82] },
     "S-07": { heart: [90, 135], brain: [60, 90] },
-    "S-13": { heart: [60, 110], brain: [50, 85] }
+    "S-32": { heart: [60, 110], brain: [50, 85] }
   };
   const { heart: [hMin, hMax], brain: [bMin, bMax] } = ranges[currentSubject.id] || { heart: [70, 120], brain: [50, 90] };
 
@@ -995,7 +995,7 @@ function randomizePreviewVitals() {
   const ranges = {
     "S-01": { heart: [120, 170], brain: [55, 82] },
     "S-07": { heart: [90, 135], brain: [60, 90] },
-    "S-13": { heart: [60, 110], brain: [50, 85] }
+    "S-32": { heart: [60, 110], brain: [50, 85] }
   };
   subjects.forEach(subj => {
     if (isSubjectLost(subj)) return;
