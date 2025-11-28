@@ -4,7 +4,7 @@ import { hudFrames } from "../data/hud_frames.js";
 import { paimonMessages, paimonAlertText } from "../data/paimon_messages.js";
 import { initPlayerSubjects, getPlayerSubjects, getEnemyPool, SubjectInstance } from '../modules/cultivation.js';
 import { CombatSession } from '../modules/combat.js';
-import { SKILL_DB, ELEMENT_NAMES } from '../data/combat_data.js';
+import { SKILL_DB, ELEMENT_NAMES, ITEMS } from '../data/combat_data.js';
 
 const subjects = subjectSeed.map(s => ({
   ...s,
@@ -1273,6 +1273,13 @@ const combatOverlay = document.getElementById('combat-overlay');
 const btnCombatExit = document.getElementById('btn-combat-exit');
 let currentCombat = null;
 
+// Simple inventory system (for demo)
+let playerInventory = {
+    'heal_s': 3,      // 纳米修补剂(白) x3
+    'heal_m': 3,      // 纳米修补剂(蓝) x3
+    'buff_atk_s': 3   // 过载注射(白) x3
+};
+
 if (btnCombatEntry) {
     btnCombatEntry.addEventListener('click', () => {
         startCombatEncounter();
@@ -1282,96 +1289,96 @@ if (btnCombatEntry) {
 if (btnCombatExit) {
     btnCombatExit.addEventListener('click', () => {
         if (currentCombat && currentCombat.state !== 'END_WIN' && currentCombat.state !== 'END_LOSS') {
-             sysConfirm("战斗正在进行中，断开连接将被视为逃跑。确定吗？", () => {
-            combatOverlay.classList.add('hidden');
-            currentCombat = null;
-        });
-        return;
+             window.sysConfirm("战斗正在进行中，断开连接将被视为逃跑。确定吗？", () => {
+                // Heal player on exit
+                const players = getPlayerSubjects();
+                if (players[0]) {
+                    players[0].currentHp = players[0].getMaxHp();
+                }
+                combatOverlay.classList.add('hidden');
+                currentCombat = null;
+            });
+            return;
+        }
+        // Heal player on exit
+        const players = getPlayerSubjects();
+        if (players[0]) {
+            players[0].currentHp = players[0].getMaxHp();
         }
         combatOverlay.classList.add('hidden');
         currentCombat = null;
     });
 }
 
-function startCombatEncounter() {
-    combatOverlay.classList.remove('hidden');
-    
-    // 1. Pick Player Subject (First one for now)
-    const players = getPlayerSubjects();
-    const playerSubj = players[0]; // Default to first slot
-    
-    // Ensure full HP for demo if dead (optional logic, maybe remove later)
-    if (playerSubj.currentHp <= 0) playerSubj.currentHp = playerSubj.getMaxHp(); 
-
-    // 2. Pick Random Enemy
-    const pool = getEnemyPool();
-    const enemyTemplate = pool[Math.floor(Math.random() * pool.length)];
-    const enemySubj = new SubjectInstance(enemyTemplate.id);
-    
-    // 3. Init Session
-    const logEl = document.getElementById('combat-log');
-    const skillPanel = document.getElementById('skill-panel');
-    
-    logEl.innerHTML = ''; // Clear log
-    skillPanel.innerHTML = ''; // Clear skills
-    
-    const appendLog = (text) => {
-        const div = document.createElement('div');
-        div.className = 'log-line';
-        div.textContent = text;
-        logEl.appendChild(div);
-        logEl.scrollTop = logEl.scrollHeight;
-    };
-    
-    const updateUI = () => {
-        renderCombatUI(currentCombat);
-    };
-    
-    currentCombat = new CombatSession(playerSubj, enemySubj, appendLog, updateUI);
-    
-    // Render Skills
-    const skills = playerSubj.getSkills();
-    skills.forEach(skillId => {
-        const skill = SKILL_DB[skillId];
-        if (!skill) return;
-        
-        const btn = document.createElement('button');
-        btn.className = 'btn-skill';
-        btn.innerHTML = `<span>${skill.name}</span> <span class=skill-cost>ACT</span>`;
-        btn.onclick = () => {
-            currentCombat.playerAction(skillId);
-        };
-        skillPanel.appendChild(btn);
-    });
-    
-    currentCombat.start();
-}
-
 function renderCombatUI(session) {
     if (!session) return;
-    
+
     // Enemy
     const eName = document.getElementById('enemy-name');
     if (eName) eName.textContent = `${session.enemy.getName()} [${ELEMENT_NAMES[session.enemy.element]}]`;
-    
+
     const eHp = session.enemy.currentHp;
     const eMax = session.enemy.getMaxHp();
     const eHpText = document.getElementById('enemy-hp-text');
     const eHpBar = document.getElementById('enemy-hp-bar');
-    if (eHpText) eHpText.textContent = `${eHp}/${eMax}`;
+    if (eHpText) {
+        const shield = session.shields.enemy > 0 ? ` +${session.shields.enemy}🛡️` : '';
+        eHpText.textContent = `${eHp}/${eMax}${shield}`;
+    }
     if (eHpBar) eHpBar.style.width = `${(eHp/eMax)*100}%`;
-    
+
     // Player
     const pName = document.getElementById('player-name');
     if (pName) pName.textContent = `${session.player.getName()} [${ELEMENT_NAMES[session.player.element]}]`;
-    
+
     const pHp = session.player.currentHp;
     const pMax = session.player.getMaxHp();
     const pHpText = document.getElementById('player-hp-text');
     const pHpBar = document.getElementById('player-hp-bar');
-    if (pHpText) pHpText.textContent = `${pHp}/${pMax}`;
+    if (pHpText) {
+        const shield = session.shields.player > 0 ? ` +${session.shields.player}🛡️` : '';
+        pHpText.textContent = `${pHp}/${pMax}${shield}`;
+    }
     if (pHpBar) pHpBar.style.width = `${(pHp/pMax)*100}%`;
-    
+
+    // Display buffs/debuffs/dots
+    const pBuffContainer = document.getElementById('player-buffs');
+    const eBuffContainer = document.getElementById('enemy-buffs');
+
+    if (pBuffContainer) {
+        pBuffContainer.innerHTML = '';
+        session.buffs.player.forEach(buff => {
+            const buffEl = document.createElement('span');
+            buffEl.className = 'buff-tag';
+            buffEl.textContent = `${buff.name}(${buff.duration})`;
+            buffEl.title = `${buff.type}: ${buff.value}`;
+            pBuffContainer.appendChild(buffEl);
+        });
+        session.dots.player.forEach(dot => {
+            const dotEl = document.createElement('span');
+            dotEl.className = 'dot-tag';
+            dotEl.textContent = `🔥${dot.name}(${dot.duration})`;
+            pBuffContainer.appendChild(dotEl);
+        });
+    }
+
+    if (eBuffContainer) {
+        eBuffContainer.innerHTML = '';
+        session.buffs.enemy.forEach(buff => {
+            const buffEl = document.createElement('span');
+            buffEl.className = 'buff-tag';
+            buffEl.textContent = `${buff.name}(${buff.duration})`;
+            buffEl.title = `${buff.type}: ${buff.value}`;
+            eBuffContainer.appendChild(buffEl);
+        });
+        session.dots.enemy.forEach(dot => {
+            const dotEl = document.createElement('span');
+            dotEl.className = 'dot-tag';
+            dotEl.textContent = `🔥${dot.name}(${dot.duration})`;
+            eBuffContainer.appendChild(dotEl);
+        });
+    }
+
     // Disable buttons if not player turn or game over
     const btns = document.querySelectorAll('.btn-skill');
     const locked = session.state !== 'PLAYER_ACT';
@@ -1445,33 +1452,54 @@ function renderManagementUI() {
 // 覆写 startCombatEncounter 以支持回调和所有技能
 window.startCombatEncounter = function() {
     combatOverlay.classList.remove('hidden');
-    
+
     const players = getPlayerSubjects();
-    const playerSubj = players[0]; 
-    if (playerSubj.currentHp <= 0) playerSubj.currentHp = playerSubj.getMaxHp(); 
+    const playerSubj = players[0];
+    if (playerSubj.currentHp <= 0) playerSubj.currentHp = playerSubj.getMaxHp();
 
     const pool = getEnemyPool();
     const enemyTemplate = pool[Math.floor(Math.random() * pool.length)];
     const enemySubj = new SubjectInstance(enemyTemplate.id);
-    
+
     const logEl = document.getElementById('combat-log');
     const skillPanel = document.getElementById('skill-panel');
-    
-    logEl.innerHTML = ''; 
-    skillPanel.innerHTML = ''; 
-    
+    const itemPanel = document.getElementById('item-panel');
+
+    logEl.innerHTML = '';
+    skillPanel.innerHTML = '';
+    itemPanel.innerHTML = '';
+
     const appendLog = (text) => {
         const div = document.createElement('div');
         div.className = 'log-line';
+
+        // Colorize based on content
+        if (text.startsWith('>>>')) {
+            div.classList.add('log-important');
+        } else if (text.startsWith('>')) {
+            div.classList.add('log-action');
+        } else if (text.includes('💥') || text.includes('造成')) {
+            div.classList.add('log-damage');
+        } else if (text.includes('💚') || text.includes('恢复')) {
+            div.classList.add('log-heal');
+        } else if (text.includes('🛡️') || text.includes('护盾')) {
+            div.classList.add('log-shield');
+        } else if (text.includes('⚡') || text.includes('⚔️') || text.includes('🔥')) {
+            div.classList.add('log-effect');
+        } else if (text.includes('已结束') || text.includes('无法') || text.includes('冷却')) {
+            div.classList.add('log-warning');
+        }
+
         div.textContent = text;
         logEl.appendChild(div);
         logEl.scrollTop = logEl.scrollHeight;
     };
-    
+
     const updateUI = () => {
         renderCombatUI(currentCombat);
+        renderItemPanel();
     };
-    
+
     // Animation Handler
     const handleEvent = async (type, data) => {
         if (type === 'coin_toss_start') {
@@ -1502,18 +1530,18 @@ window.startCombatEncounter = function() {
             }
         }
     };
-    
+
     currentCombat = new CombatSession(playerSubj, enemySubj, appendLog, updateUI, handleEvent);
-    
+
     // Render ALL Skills
     const skills = playerSubj.getSkills();
     skills.forEach(skillId => {
         const skill = SKILL_DB[skillId];
         if (!skill) return;
-        
+
         const btn = document.createElement('button');
         btn.className = 'btn-skill';
-        
+
         btn.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:flex-start;">
                 <span style="font-weight:bold">${skill.name}</span>
@@ -1525,7 +1553,50 @@ window.startCombatEncounter = function() {
         };
         skillPanel.appendChild(btn);
     });
-    
+
+    // Render Items
+    function renderItemPanel() {
+        if (!itemPanel) return;
+        itemPanel.innerHTML = '';
+
+        Object.keys(playerInventory).forEach(itemId => {
+            const count = playerInventory[itemId];
+            const itemData = ITEMS.find(i => i.id === itemId);
+            if (!itemData) return;
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-item';
+            if (count <= 0) btn.classList.add('depleted');
+
+            btn.textContent = `${itemData.name} x${count}`;
+            btn.disabled = count <= 0 || currentCombat.state !== 'PLAYER_ACT';
+
+            // Generate tooltip based on item type
+            let tooltip = itemData.name + '\n';
+            if (itemData.type === 'heal') {
+                tooltip += `恢复 ${itemData.val} 点生命值`;
+            } else if (itemData.type === 'buff_atk') {
+                tooltip += `攻击力提升 ${(itemData.val * 100).toFixed(0)}%，持续 ${itemData.duration} 回合`;
+            } else {
+                tooltip += '使用后消耗一个回合';
+            }
+            btn.title = tooltip;
+
+            btn.onclick = () => {
+                if (count > 0 && currentCombat.useItem) {
+                    const success = currentCombat.useItem(itemId);
+                    if (success) {
+                        playerInventory[itemId]--;
+                        renderItemPanel();
+                    }
+                }
+            };
+
+            itemPanel.appendChild(btn);
+        });
+    }
+
+    renderItemPanel();
     currentCombat.start();
 };
 

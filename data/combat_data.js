@@ -317,6 +317,212 @@ export const SUBJECT_DB = [
         ]
       }
     ]
+  },
+  // 超能 - 浮点系列
+  {
+    "id": "S-03",
+    "name": "浮点",
+    "element": "psychic",
+    "forms": [
+      {
+        "name": "浮点",
+        "hp": 100,
+        "xpMax": 1200,
+        "skills": ["gravity_touch", "memory_bubble"]
+      },
+      {
+        "name": "漂浮体",
+        "hp": 140,
+        "xpMax": 3200,
+        "skills": ["gravity_touch", "memory_bubble", "collapse"]
+      },
+      {
+        "name": "空壳",
+        "hp": 190,
+        "xpMax": 0,
+        "skills": ["gravity_touch", "memory_bubble", "collapse"]
+      }
+    ]
+  },
+  // 超能 - 镜灵系列
+  {
+    "id": "S-04",
+    "name": "镜灵",
+    "element": "psychic",
+    "forms": [
+      {
+        "name": "镜灵",
+        "hp": 125,
+        "xpMax": 1600,
+        "skills": ["mirror_reflect", "split_frame"]
+      },
+      {
+        "name": "裂像",
+        "hp": 170,
+        "xpMax": 0,
+        "skills": ["mirror_reflect", "split_frame", "draft"]
+      }
+    ]
+  },
+  // 量子 - 随机鹦系列
+  {
+    "id": "S-10",
+    "name": "随机鹦",
+    "element": "quantum",
+    "forms": [
+      {
+        "name": "随机鹦",
+        "hp": 105,
+        "xpMax": 1500,
+        "skills": ["repeat", "recursive_peck"]
+      },
+      {
+        "name": "递归鸟",
+        "hp": 155,
+        "xpMax": 0,
+        "skills": ["repeat", "recursive_peck", "bell_state"]
+      }
+    ]
+  },
+  // 火焰 - 灰翼系列
+  {
+    "id": "S-15",
+    "name": "灰翼",
+    "element": "fire",
+    "forms": [
+      {
+        "name": "灰翼",
+        "hp": 90,
+        "xpMax": 900,
+        "skills": ["ash_spread", "after_warm"]
+      },
+      {
+        "name": "灰烬蛾",
+        "hp": 130,
+        "xpMax": 0,
+        "skills": ["ash_spread", "after_warm", "self_burn"]
+      }
+    ]
+  },
+  // 火焰 - 浮火系列
+  {
+    "id": "S-16",
+    "name": "浮火",
+    "element": "fire",
+    "forms": [
+      {
+        "name": "浮火",
+        "hp": 80,
+        "xpMax": 800,
+        "skills": ["dark_flame", "sub_burn"]
+      },
+      {
+        "name": "隐焰",
+        "hp": 120,
+        "xpMax": 0,
+        "skills": ["dark_flame", "sub_burn", "ablation"]
+      }
+    ]
+  },
+  // 雷电 - 脉冲蛇系列
+  {
+    "id": "S-22",
+    "name": "脉冲蛇",
+    "element": "thunder",
+    "forms": [
+      {
+        "name": "脉冲蛇",
+        "hp": 115,
+        "xpMax": 1400,
+        "skills": ["ambush_shock", "voltage_hiss"]
+      },
+      {
+        "name": "雷鳞蛇",
+        "hp": 170,
+        "xpMax": 0,
+        "skills": ["ambush_shock", "voltage_hiss", "discharge_ring"]
+      }
+    ]
+  },
+  // 雷电 - 天线鸦系列
+  {
+    "id": "S-23",
+    "name": "天线鸦",
+    "element": "thunder",
+    "forms": [
+      {
+        "name": "天线鸦",
+        "hp": 95,
+        "xpMax": 1000,
+        "skills": ["wire_peck", "signal_jam"]
+      },
+      {
+        "name": "闪烁鸦",
+        "hp": 140,
+        "xpMax": 0,
+        "skills": ["wire_peck", "signal_jam", "flicker"]
+      }
+    ]
+  },
+  // 雷电 - 净空员系列
+  {
+    "id": "S-24",
+    "name": "净空员",
+    "element": "thunder",
+    "forms": [
+      {
+        "name": "净空员",
+        "hp": 140,
+        "xpMax": 1700,
+        "skills": ["silent_thunder", "insulate_step"]
+      },
+      {
+        "name": "避雷人",
+        "hp": 190,
+        "xpMax": 0,
+        "skills": ["silent_thunder", "insulate_step", "mag_storm"]
+      }
+    ]
+  },
+  // 合金 - 哨戒蜂系列
+  {
+    "id": "S-34",
+    "name": "哨戒蜂",
+    "element": "alloy",
+    "forms": [
+      {
+        "name": "哨戒蜂",
+        "hp": 100,
+        "xpMax": 1100,
+        "skills": ["shrapnel", "jam_freq"]
+      },
+      {
+        "name": "铁幕蜂",
+        "hp": 145,
+        "xpMax": 0,
+        "skills": ["shrapnel", "jam_freq", "self_destruct"]
+      }
+    ]
+  },
+  // 合金 - 链式护工系列
+  {
+    "id": "S-35",
+    "name": "链式护工",
+    "element": "alloy",
+    "forms": [
+      {
+        "name": "链式护工",
+        "hp": 170,
+        "xpMax": 1900,
+        "skills": ["chain_anchor", "counter_stance"]
+      },
+      {
+        "name": "锚链者",
+        "hp": 230,
+        "xpMax": 0,
+        "skills": ["chain_anchor", "counter_stance", "steel_wall"]
+      }
+    ]
   }
 ];
 

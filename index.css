@@ -1674,6 +1674,31 @@ header .status {
   color: #8b949e;
 }
 
+.buffs-container {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 20px;
+}
+
+.buff-tag, .dot-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(118, 227, 234, 0.15);
+  border: 1px solid rgba(118, 227, 234, 0.4);
+  color: #76e3ea;
+  font-family: var(--font-mono);
+}
+
+.dot-tag {
+  background: rgba(248, 81, 73, 0.15);
+  border-color: rgba(248, 81, 73, 0.4);
+  color: #f85149;
+}
+
 .sprite-box {
   width: 120px;
   height: 120px;
@@ -1713,13 +1738,55 @@ header .status {
 .log-line {
   line-height: 1.4;
 }
+.log-important {
+  color: #f0e68c;
+  font-weight: bold;
+}
+.log-action {
+  color: #76e3ea;
+}
+.log-damage {
+  color: #f85149;
+}
+.log-heal {
+  color: #7ee787;
+}
+.log-shield {
+  color: #58a6ff;
+}
+.log-effect {
+  color: #d2a8ff;
+}
+.log-warning {
+  color: #f0883e;
+}
+
+.combat-actions {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #30363d;
+}
 
 .skill-panel {
-  width: 240px;
+  flex: 1;
   padding: 12px;
+  padding-bottom: 6px;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 6px;
+  overflow-y: auto;
+  border-bottom: 1px solid #30363d;
+}
+
+.item-panel {
+  padding: 8px 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  min-height: 44px;
+  max-height: 60px;
   overflow-y: auto;
 }
 
@@ -1750,6 +1817,33 @@ header .status {
   font-size: 10px;
   color: #8b949e;
 }
+
+.btn-item {
+  background: #1a1f26;
+  border: 1px solid #58a6ff;
+  color: #e6edf3;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.btn-item:hover:not(:disabled) {
+  border-color: #76e3ea;
+  background: rgba(118, 227, 234, 0.1);
+  transform: translateY(-1px);
+}
+.btn-item:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.btn-item.depleted {
+  opacity: 0.2;
+  text-decoration: line-through;
+}
+
 .blink-slow {
   animation: blink 2s infinite;
 }
