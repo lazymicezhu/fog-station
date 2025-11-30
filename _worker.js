@@ -1,4 +1,5 @@
 import handler, { onRequest as onWsRequest, ChatRoom as ChatRoomImpl } from "./functions/ws.js";
+import manifestJson from "__STATIC_CONTENT_MANIFEST";
 
 // Export Durable Object class so Wrangler can bind it
 export class ChatRoom extends ChatRoomImpl {}
@@ -26,7 +27,8 @@ async function serveStaticAsset(request, env) {
   if (path === "/") path = "/index.html";
   if (path.endsWith("/")) path = path + "index.html";
 
-  const manifest = env.__STATIC_CONTENT_MANIFEST ? JSON.parse(env.__STATIC_CONTENT_MANIFEST) : {};
+  // Manifest comes from bundled import in module Worker
+  const manifest = manifestJson || (env.__STATIC_CONTENT_MANIFEST ? JSON.parse(env.__STATIC_CONTENT_MANIFEST) : {});
   const candidates = [
     path.slice(1),
     path.startsWith("/") ? path.slice(1) : path,
