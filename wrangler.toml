@@ -1,3 +1,14 @@
 name = "fog-station"
+main = "_worker.js"
 compatibility_date = "2024-10-01"
-pages_build_output_dir = "."
+
+[site]
+bucket = "."
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
