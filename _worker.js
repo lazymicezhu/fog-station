@@ -28,7 +28,12 @@ async function serveStaticAsset(request, env) {
   if (path.endsWith("/")) path = path + "index.html";
 
   // Manifest comes from bundled import in module Worker
-  const manifest = manifestJson || (env.__STATIC_CONTENT_MANIFEST ? JSON.parse(env.__STATIC_CONTENT_MANIFEST) : {});
+  let manifest = {};
+  if (manifestJson) {
+    manifest = typeof manifestJson === "string" ? JSON.parse(manifestJson) : manifestJson;
+  } else if (env.__STATIC_CONTENT_MANIFEST) {
+    manifest = JSON.parse(env.__STATIC_CONTENT_MANIFEST);
+  }
   const candidates = [
     path.slice(1),
     path.startsWith("/") ? path.slice(1) : path,
