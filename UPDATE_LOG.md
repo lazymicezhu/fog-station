@@ -4,6 +4,10 @@
 > 约定：按顺序向下填写
 
 
+## 2025-11-30 19:54 — **Worker 模式静态资源与 DO 兼容修复**
+  - **fix(worker):** `_worker.js` 改用 `__STATIC_CONTENT` + manifest 解析（兼容字符串/对象），包含 index.html fallback，解决 Worker 模式下静态资源 404/500 与聊天入口失效。
+  - **config(worker):** `wrangler.toml` 使用 `[site] bucket="."`、`main="_worker.js"` 与 `new_sqlite_classes` DO 迁移，配合 Worker 部署替代 Pages 绑定校验。
+
 ## 2025-11-30 17:55 — 实时聊天室（助手入口）接入
   - **feat(chat):** 悬浮助手头像点击可打开/关闭聊天面板，拖拽头像不再误触开关，昵称沿用登录用户名。
   - **feat(chat):** 前端接入 WebSocket 聊天，自动重连、历史消息回放，文本安全截断（用户名 32 字、消息 320 字）。
