@@ -72,6 +72,12 @@ const waveBrainText = document.getElementById("wave-brain-text");
 const paimonWidget = document.getElementById("paimon-widget");
 const paimonMessageEl = document.getElementById("paimon-message");
 const paimonAvatar = document.getElementById("paimon-avatar");
+const chatPanel = document.getElementById("chat-panel");
+const chatMessagesEl = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+const chatSend = document.getElementById("chat-send");
+const chatStatus = document.getElementById("chat-status");
+const chatUsername = document.getElementById("chat-username");
 
 const MAX_LOGS = 18;
 const DAILY_SAMPLE_PERMITS = 10;
@@ -102,7 +108,12 @@ let stabilizerArmed = false;
 let researchProgress = 0;
 let hudDebug = false;
 let paimonPosition = { x: null, y: null }; // 表示头像中心锚点位置
-let paimonDrag = { active: false, pointerId: null, offsetX: 0, offsetY: 0 };
+let paimonDrag = { active: false, dragging: false, moved: false, pointerId: null, offsetX: 0, offsetY: 0, startX: 0, startY: 0 };
+let chatSocket = null;
+let chatReconnectTimer = null;
+let chatOpen = false;
+const chatHistoryLimit = 80;
+let lastChatPlacement = { left: 0, top: 0, placeLeft: false };
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -622,6 +633,8 @@ function setPaimonPosition(x, y) {
   paimonWidget.style.bottom = "auto";
 
   paimonPosition = { x: anchorX, y: anchorY };
+  // 如果聊天打开，跟随助手位置重新定位
+  if (chatOpen) updateChatPanelPosition();
 }
 
 function initPaimonPosition() {
@@ -645,43 +658,61 @@ function clampPaimonWithinView() {
 
 function startPaimonDrag(e) {
   if (!paimonWidget) return;
-  // 获取容器偏移
   const container = paimonWidget.offsetParent || document.body;
   const rect = container.getBoundingClientRect();
-  
-  // 计算当前鼠标在容器内的相对坐标
   const mouseInContainerX = e.clientX - rect.left;
   const mouseInContainerY = e.clientY - rect.top;
 
   paimonDrag = {
     active: true,
-    pointerId: e.pointerId,
-    // 记录鼠标相对于当前锚点的偏移
-    offsetX: mouseInContainerX - (paimonPosition.x ?? 0),
-    offsetY: mouseInContainerY - (paimonPosition.y ?? 0)
+    dragging: false,
+    moved: false,
+    pointerId: e.pointerId ?? null,
+    startX: mouseInContainerX,
+    startY: mouseInContainerY,
+    offsetX: mouseInContainerX - (paimonPosition.x ?? mouseInContainerX),
+    offsetY: mouseInContainerY - (paimonPosition.y ?? mouseInContainerY)
   };
-  paimonWidget.classList.add("is-dragging");
-  paimonWidget.setPointerCapture(e.pointerId);
 }
 
 function movePaimon(e) {
   if (!paimonDrag.active || (paimonDrag.pointerId !== null && e.pointerId !== paimonDrag.pointerId)) return;
-  
   const container = paimonWidget.offsetParent || document.body;
   const rect = container.getBoundingClientRect();
   const mouseInContainerX = e.clientX - rect.left;
   const mouseInContainerY = e.clientY - rect.top;
+
+  const dx = mouseInContainerX - paimonDrag.startX;
+  const dy = mouseInContainerY - paimonDrag.startY;
+  const movedEnough = Math.abs(dx) + Math.abs(dy) > 4;
+  if (movedEnough && !paimonDrag.dragging) {
+    paimonDrag.dragging = true;
+    paimonDrag.moved = true;
+    paimonWidget.classList.add("is-dragging");
+  }
+  if (!paimonDrag.dragging) return;
 
   setPaimonPosition(mouseInContainerX - paimonDrag.offsetX, mouseInContainerY - paimonDrag.offsetY);
 }
 
 function endPaimonDrag(e) {
   if (!paimonDrag.active || (paimonDrag.pointerId !== null && e.pointerId !== paimonDrag.pointerId)) return;
-  paimonDrag = { active: false, pointerId: null, offsetX: 0, offsetY: 0 };
+  const container = paimonWidget.offsetParent || document.body;
+  const rect = container.getBoundingClientRect();
+  const upX = e.clientX - rect.left;
+  const upY = e.clientY - rect.top;
+  const dx = upX - paimonDrag.startX;
+  const dy = upY - paimonDrag.startY;
+  const clickLike = Math.abs(dx) + Math.abs(dy) <= 4;
+  const wasDragging = paimonDrag.dragging;
+
+  paimonDrag = { active: false, dragging: false, moved: false, pointerId: null, offsetX: 0, offsetY: 0, startX: 0, startY: 0 };
   paimonWidget.classList.remove("is-dragging");
   clampPaimonWithinView();
-  if (e.pointerId !== undefined) {
-    paimonWidget.releasePointerCapture(e.pointerId);
+  if (chatOpen) updateChatPanelPosition();
+  if (!wasDragging && clickLike && paimonAvatar && paimonAvatar.contains(e.target)) {
+    toggleChatPanel();
+    updateChatPanelPosition();
   }
 }
 
@@ -700,6 +731,193 @@ function initPaimonAssistant() {
   window.addEventListener("resize", clampPaimonWithinView);
   updatePaimonMessage();
 }
+
+/* ---
+  CHAT CLIENT
+--- */
+function getResearcherProfile() {
+  try {
+    const raw = localStorage.getItem("fog_station_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function getChatNickname() {
+  const profile = getResearcherProfile();
+  const name = profile?.username || "研究员";
+  return name.slice(0, 32);
+}
+
+function updateChatPanelPosition() {
+  if (!chatPanel || !paimonWidget) return;
+  const container = paimonWidget.offsetParent || document.body;
+  const containerRect = container.getBoundingClientRect();
+  const panelRect = chatPanel.getBoundingClientRect();
+  const padding = 12;
+  const gap = 12;
+
+  const anchorX = paimonPosition.x ?? (paimonWidget.getBoundingClientRect().left - containerRect.left);
+  const anchorY = paimonPosition.y ?? (paimonWidget.getBoundingClientRect().top - containerRect.top);
+  const avatarW = paimonAvatar?.offsetWidth || 74;
+  const panelW = panelRect.width || 360;
+  const panelH = panelRect.height || 260;
+
+  const widgetCenterY = anchorY;
+  let panelLeft = anchorX + avatarW / 2 + gap;
+  let placeLeft = false;
+  if (panelLeft + panelW + padding > containerRect.width) {
+    panelLeft = anchorX - avatarW / 2 - gap - panelW;
+    placeLeft = true;
+  }
+  panelLeft = Math.max(padding, Math.min(panelLeft, containerRect.width - panelW - padding));
+  let panelTop = widgetCenterY - panelH / 2;
+  panelTop = Math.max(padding, Math.min(panelTop, containerRect.height - panelH - padding));
+
+  chatPanel.style.left = `${panelLeft}px`;
+  chatPanel.style.top = `${panelTop}px`;
+  chatPanel.classList.toggle("message-left", placeLeft);
+  lastChatPlacement = { left: panelLeft, top: panelTop, placeLeft };
+}
+
+function setChatStatus(text, online = false) {
+  if (chatStatus) {
+    chatStatus.textContent = text;
+    chatStatus.classList.toggle("online", online);
+  }
+}
+
+function renderChatUser() {
+  if (chatUsername) chatUsername.textContent = getChatNickname();
+}
+
+function appendChatMessage({ user, text, ts }) {
+  if (!chatMessagesEl) return;
+  const item = document.createElement("div");
+  item.className = "chat-item";
+  const timeStr = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const nameEl = document.createElement("span");
+  nameEl.textContent = user || "研究员";
+  const timeEl = document.createElement("span");
+  timeEl.textContent = timeStr;
+  meta.appendChild(nameEl);
+  meta.appendChild(timeEl);
+
+  const textEl = document.createElement("div");
+  textEl.className = "text";
+  textEl.textContent = text || "";
+
+  item.appendChild(meta);
+  item.appendChild(textEl);
+  chatMessagesEl.appendChild(item);
+  while (chatMessagesEl.children.length > chatHistoryLimit) {
+    chatMessagesEl.removeChild(chatMessagesEl.firstChild);
+  }
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+function handleChatMessage(event) {
+  let payload;
+  try {
+    payload = JSON.parse(event.data);
+  } catch (err) {
+    return;
+  }
+  if (payload.type === "history" && Array.isArray(payload.messages)) {
+    chatMessagesEl.innerHTML = "";
+    payload.messages.forEach(m => appendChatMessage(m));
+  } else if (payload.type === "chat") {
+    appendChatMessage(payload);
+  }
+}
+
+function connectChatSocket() {
+  if (chatSocket) return;
+  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const url = `${wsProtocol}//${window.location.host}/ws`;
+  setChatStatus("连接中...");
+  chatSocket = new WebSocket(url);
+
+  chatSocket.addEventListener("open", () => {
+    setChatStatus("在线", true);
+  });
+
+  chatSocket.addEventListener("message", handleChatMessage);
+
+  chatSocket.addEventListener("close", () => {
+    setChatStatus("已断开");
+    chatSocket = null;
+    if (chatReconnectTimer) clearTimeout(chatReconnectTimer);
+    chatReconnectTimer = setTimeout(connectChatSocket, 3000);
+  });
+
+  chatSocket.addEventListener("error", () => {
+    setChatStatus("连接异常");
+    if (chatSocket) chatSocket.close();
+  });
+}
+
+function sendChatMessage() {
+  const text = chatInput?.value?.trim();
+  if (!text) return;
+  const payload = {
+    user: getChatNickname(),
+    text: text.slice(0, 320)
+  };
+  if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+    chatSocket.send(JSON.stringify(payload));
+    chatInput.value = "";
+  } else {
+    setChatStatus("未连接");
+  }
+}
+
+function toggleChatPanel(force) {
+  if (!chatPanel) return;
+  const shouldOpen = typeof force === "boolean" ? force : !chatOpen;
+  chatOpen = shouldOpen;
+  chatPanel.classList.toggle("open", shouldOpen);
+  chatPanel.classList.toggle("hidden", !shouldOpen);
+  if (paimonMessageEl) {
+    paimonMessageEl.classList.toggle("bubble-hidden", shouldOpen);
+  }
+  if (paimonWidget) paimonWidget.style.display = "inline-flex";
+  if (paimonAvatar) paimonAvatar.style.display = "block";
+  if (shouldOpen) {
+    renderChatUser();
+    connectChatSocket();
+    requestAnimationFrame(() => {
+      updateChatPanelPosition();
+      setTimeout(() => chatInput?.focus(), 80);
+    });
+  }
+}
+
+function initChat() {
+  renderChatUser();
+  if (chatSend) chatSend.addEventListener("click", sendChatMessage);
+  if (chatInput) {
+    chatInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendChatMessage();
+    });
+  }
+  // 单击头像开关聊天（忽略正在拖拽的情况）
+  // 点击头像开关聊天逻辑已在 pointerup 内处理（click-like 判定），此处无需重复监听
+  // 窗口缩放时重置聊天位置
+  window.addEventListener("resize", () => {
+    if (chatOpen) updateChatPanelPosition();
+  });
+  // 登录信息更新后刷新昵称
+  window.addEventListener("storage", (e) => {
+    if (e.key === "fog_station_user") {
+      renderChatUser();
+    }
+  });
+}
+
 function refillQueue(color) {
   dailyQueues[color] = shuffle(dailyPools[color]);
 }
@@ -1256,6 +1474,7 @@ renderSubjectList();
 renderPreviewGrid();
 showPreview();
 initPaimonAssistant();
+initChat();
 assignDailyStatuses(true);
 updateResourceUI();
 updateNextDayButtonState();

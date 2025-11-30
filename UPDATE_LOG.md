@@ -4,6 +4,15 @@
 > 约定：按顺序向下填写
 
 
+## 2025-11-30 17:55 — 实时聊天室（助手入口）接入
+  - **feat(chat):** 悬浮助手头像点击可打开/关闭聊天面板，拖拽头像不再误触开关，昵称沿用登录用户名。
+  - **feat(chat):** 前端接入 WebSocket 聊天，自动重连、历史消息回放，文本安全截断（用户名 32 字、消息 320 字）。
+  - **backend(chat):** Pages Functions + Durable Object (`ChatRoom`) 提供 `/ws` WebSocket 广播，内存保存最近 50 条消息。
+  - **docs(chat):** 新增 `docs/systems/chat.md` 说明架构、消息格式、本地开发与部署要求。
+  - **fix(chat):** 新增根级 `_worker.js`（入口改为 `_worker.js`）统一导出 DO 并路由 `/ws`，避免 wrangler pages dev 报 DO 未导出；聊天面板随助手拖动重新定位并加大尺寸，点击不再跳远。
+  - **refactor(chat-ui):** 拖拽判定精简：pointerdown 记录起点，移动超阈值才加 `is-dragging`，pointerup 若未拖动且落点在头像内才切换聊天（移除 click 监听，避免拖动后误触）；阈值 4px，点击即可开关面板，拖动只移动助手。
+  - **fix(chat-ui):** 聊天打开时仅隐藏气泡内容（`.bubble-hidden`），头像保持可见；聊天面板固定 360x500，消息区固定高度滚动。
+
 ## 2025-11-28 16:30 — 战斗系统全面重构与完善
   - **feat(combat):** 实现完整的 Buff/Debuff 系统，支持伤害加成、伤害减益、反击、荆棘等多种效果类型。
   - **feat(combat):** 实现 DOT（持续伤害）每回合自动结算机制，支持多个 DOT 叠加。
@@ -347,4 +356,3 @@
 - 预览与监控：预览四宫格显示红外轮廓并具备柔和动态；监控屏展示不同实验体红外图，支持采集/刷新体征。
 - 文档更新：`subject_monitor.md` 补充上述逻辑、UI 状态与扩展说明。 
 - 样式与时间系统：样式抽离至 `index.css` 便于审查； 
-
