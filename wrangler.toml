@@ -4,5 +4,9 @@ pages_build_output_dir = "."
 
 [durable_objects]
 bindings = [
-  { name = "CHAT_ROOM", class_name = "ChatRoom" }
+  { name = "CHAT_ROOM", class_name = "ChatRoom", script_name = "fog-station" }
 ]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
