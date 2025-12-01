@@ -374,5 +374,5 @@ test('sampling workflow', () => {
 
 ---
 
-最后更新: 2024-01-XX
-维护者: [Your Name]
+最后更新: 2025-12-1
+维护者: Lazymice
