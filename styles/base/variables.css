@@ -1,0 +1,143 @@
+/**
+ * 设计变量 - 全局样式变量定义
+ * Design Variables - Global style variables
+ */
+
+:root {
+  /* ===== Typography ===== */
+  --font-primary: "Noto Sans SC", sans-serif;
+  --font-mono: "Roboto Mono", monospace;
+
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  --letter-spacing-tight: 0.02em;
+  --letter-spacing-normal: 0.05em;
+  --letter-spacing-wide: 0.1em;
+
+  /* ===== Colors ===== */
+  /* Base colors */
+  --color-bg-deep: #010409;
+  --color-bg: #0d1117;
+  --color-bg-panel: #161b22;
+  --color-bg-hover: #1c2128;
+  --color-bg-active: #21262d;
+
+  /* Border colors */
+  --color-border: rgba(137, 207, 235, 0.2);
+  --color-border-strong: rgba(137, 207, 235, 0.4);
+
+  /* Text colors */
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #7d8590;
+  --color-text-muted: #484f58;
+  --color-text-inverse: #0d1117;
+
+  /* Brand/accent colors */
+  --color-accent: #58a6ff;
+  --color-accent-hover: #79b8ff;
+  --color-glow: #388bfd;
+  --color-cyan: #76e3ea;
+  --color-purple: #bc8cff;
+
+  /* Semantic colors */
+  --color-success: #3fb950;
+  --color-warning: #d29922;
+  --color-danger: #f85149;
+  --color-red: #ff9bb0;
+  --color-orange: #ffcb8a;
+  --color-blue: #91a2f0;
+
+  /* Status colors (for subjects) */
+  --status-white: #91a2f0;
+  --status-orange: #ffcb8a;
+  --status-red: #ff9bb0;
+
+  /* Vitals colors */
+  --vital-heart: #ff6b9d;
+  --vital-brain: #4fc3f7;
+  --vital-shift: #ba68c8;
+  --vital-alert: #ff4444;
+
+  /* ===== Spacing ===== */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+
+  /* ===== Layout ===== */
+  --border-radius-sm: 3px;
+  --border-radius-base: 6px;
+  --border-radius-lg: 8px;
+  --border-radius-xl: 12px;
+  --border-radius-full: 9999px;
+
+  --border-width-thin: 1px;
+  --border-width-medium: 2px;
+  --border-width-thick: 3px;
+
+  /* ===== Shadows ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 10px var(--color-glow);
+  --shadow-glow-strong: 0 0 20px var(--color-glow);
+
+  /* ===== Transitions ===== */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 350ms ease;
+
+  /* ===== Z-index ===== */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 1000;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* ===== Dimensions ===== */
+  --app-width: 1200px;
+  --app-height: 900px;
+  --header-height: 52px;
+  --sidebar-width: 220px;
+  --log-panel-width: 340px;
+}
+
+/* ===== Accessibility & Theme Support ===== */
+/* 未来可以添加深色/浅色主题切换 */
+[data-theme="light"] {
+  /* 浅色主题变量 */
+}
+
+[data-theme="dark"] {
+  /* 深色主题变量（默认） */
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  :root {
+    --color-border: rgba(137, 207, 235, 0.6);
+    --color-text-secondary: #9ba1a8;
+  }
+}
+
+/* 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-base: 0ms;
+    --transition-slow: 0ms;
+  }
+}

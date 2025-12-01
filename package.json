@@ -1,0 +1,39 @@
+{
+  "name": "fog-station",
+  "version": "1.0.0",
+  "description": "BNU 实验体监控终端 - 实验性交互叙事项目",
+  "type": "module",
+  "scripts": {
+    "dev": "./node_modules/.bin/vite",
+    "build": "./node_modules/.bin/vite build",
+    "preview": "./node_modules/.bin/vite preview",
+    "lint": "./node_modules/.bin/eslint . --ext .js",
+    "lint:fix": "./node_modules/.bin/eslint . --ext .js --fix",
+    "test": "./node_modules/.bin/vitest",
+    "test:ui": "./node_modules/.bin/vitest --ui",
+    "test:coverage": "./node_modules/.bin/vitest --coverage",
+    "deploy": "npm run build && wrangler pages deploy dist"
+  },
+  "keywords": [
+    "interactive-narrative",
+    "game",
+    "experimental",
+    "monitoring-system"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@vitejs/plugin-legacy": "^5.2.0",
+    "eslint": "^8.56.0",
+    "eslint-config-standard": "^17.1.0",
+    "vite": "^5.0.11",
+    "vitest": "^1.2.0",
+    "@vitest/ui": "^1.2.0",
+    "@vitest/coverage-v8": "^1.2.0"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
