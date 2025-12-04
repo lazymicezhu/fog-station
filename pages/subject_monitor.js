@@ -72,7 +72,6 @@ const waveBrainText = document.getElementById("wave-brain-text");
 const paimonWidget = document.getElementById("paimon-widget");
 const paimonMessageEl = document.getElementById("paimon-message");
 const paimonAvatar = document.getElementById("paimon-avatar");
-const chatPanel = document.getElementById("chat-panel");
 const chatMessagesEl = document.getElementById("chat-messages");
 const chatInput = document.getElementById("chat-input");
 const chatSend = document.getElementById("chat-send");
@@ -111,9 +110,8 @@ let paimonPosition = { x: null, y: null }; // 表示头像中心锚点位置
 let paimonDrag = { active: false, dragging: false, moved: false, pointerId: null, offsetX: 0, offsetY: 0, startX: 0, startY: 0 };
 let chatSocket = null;
 let chatReconnectTimer = null;
-let chatOpen = false;
 const chatHistoryLimit = 80;
-let lastChatPlacement = { left: 0, top: 0, placeLeft: false };
+let currentTab = 'log'; // 当前激活的标签页
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -633,8 +631,6 @@ function setPaimonPosition(x, y) {
   paimonWidget.style.bottom = "auto";
 
   paimonPosition = { x: anchorX, y: anchorY };
-  // 如果聊天打开，跟随助手位置重新定位
-  if (chatOpen) updateChatPanelPosition();
 }
 
 function initPaimonPosition() {
@@ -709,10 +705,9 @@ function endPaimonDrag(e) {
   paimonDrag = { active: false, dragging: false, moved: false, pointerId: null, offsetX: 0, offsetY: 0, startX: 0, startY: 0 };
   paimonWidget.classList.remove("is-dragging");
   clampPaimonWithinView();
-  if (chatOpen) updateChatPanelPosition();
+  // 点击头像时切换到研究员频道标签
   if (!wasDragging && clickLike && paimonAvatar && paimonAvatar.contains(e.target)) {
-    toggleChatPanel();
-    updateChatPanelPosition();
+    switchTab('chat');
   }
 }
 
@@ -750,35 +745,26 @@ function getChatNickname() {
   return name.slice(0, 32);
 }
 
-function updateChatPanelPosition() {
-  if (!chatPanel || !paimonWidget) return;
-  const container = paimonWidget.offsetParent || document.body;
-  const containerRect = container.getBoundingClientRect();
-  const panelRect = chatPanel.getBoundingClientRect();
-  const padding = 12;
-  const gap = 12;
+// 标签页切换功能
+function switchTab(tabName) {
+  currentTab = tabName;
 
-  const anchorX = paimonPosition.x ?? (paimonWidget.getBoundingClientRect().left - containerRect.left);
-  const anchorY = paimonPosition.y ?? (paimonWidget.getBoundingClientRect().top - containerRect.top);
-  const avatarW = paimonAvatar?.offsetWidth || 74;
-  const panelW = panelRect.width || 360;
-  const panelH = panelRect.height || 260;
+  // 更新标签按钮状态
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
 
-  const widgetCenterY = anchorY;
-  let panelLeft = anchorX + avatarW / 2 + gap;
-  let placeLeft = false;
-  if (panelLeft + panelW + padding > containerRect.width) {
-    panelLeft = anchorX - avatarW / 2 - gap - panelW;
-    placeLeft = true;
+  // 更新标签内容显示
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.toggle('hidden', content.dataset.tab !== tabName);
+  });
+
+  // 如果切换到聊天标签，自动连接聊天并聚焦输入框
+  if (tabName === 'chat') {
+    renderChatUser();
+    connectChatSocket();
+    setTimeout(() => chatInput?.focus(), 80);
   }
-  panelLeft = Math.max(padding, Math.min(panelLeft, containerRect.width - panelW - padding));
-  let panelTop = widgetCenterY - panelH / 2;
-  panelTop = Math.max(padding, Math.min(panelTop, containerRect.height - panelH - padding));
-
-  chatPanel.style.left = `${panelLeft}px`;
-  chatPanel.style.top = `${panelTop}px`;
-  chatPanel.classList.toggle("message-left", placeLeft);
-  lastChatPlacement = { left: panelLeft, top: panelTop, placeLeft };
 }
 
 function setChatStatus(text, online = false) {
@@ -875,27 +861,6 @@ function sendChatMessage() {
   }
 }
 
-function toggleChatPanel(force) {
-  if (!chatPanel) return;
-  const shouldOpen = typeof force === "boolean" ? force : !chatOpen;
-  chatOpen = shouldOpen;
-  chatPanel.classList.toggle("open", shouldOpen);
-  chatPanel.classList.toggle("hidden", !shouldOpen);
-  if (paimonMessageEl) {
-    paimonMessageEl.classList.toggle("bubble-hidden", shouldOpen);
-  }
-  if (paimonWidget) paimonWidget.style.display = "inline-flex";
-  if (paimonAvatar) paimonAvatar.style.display = "block";
-  if (shouldOpen) {
-    renderChatUser();
-    connectChatSocket();
-    requestAnimationFrame(() => {
-      updateChatPanelPosition();
-      setTimeout(() => chatInput?.focus(), 80);
-    });
-  }
-}
-
 function initChat() {
   renderChatUser();
   if (chatSend) chatSend.addEventListener("click", sendChatMessage);
@@ -904,12 +869,14 @@ function initChat() {
       if (e.key === "Enter") sendChatMessage();
     });
   }
-  // 单击头像开关聊天（忽略正在拖拽的情况）
-  // 点击头像开关聊天逻辑已在 pointerup 内处理（click-like 判定），此处无需重复监听
-  // 窗口缩放时重置聊天位置
-  window.addEventListener("resize", () => {
-    if (chatOpen) updateChatPanelPosition();
+
+  // 绑定标签页切换事件
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchTab(btn.dataset.tab);
+    });
   });
+
   // 登录信息更新后刷新昵称
   window.addEventListener("storage", (e) => {
     if (e.key === "fog_station_user") {

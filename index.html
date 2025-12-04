@@ -209,19 +209,44 @@
       </div>
     </section>
 
-    <!-- 右侧：监控日志 -->
+    <!-- 右侧：监控日志与研究员频道 -->
     <aside class="log-panel">
-      <div class="log-header">
-        <div>
-          <div class="log-title">
-            监控日志 / LOG
-            <span class="resource-help" data-tip="红：高风险 / 橙：次风险 / 默认：常规">i</span>
-          </div>
-          <div class="log-sub">记录当前实验体的关键事件与异常行为。</div>
-        </div>
-        <button class="btn-log" id="btn-alert-log">异常日志</button>
+      <!-- 标签页头部 -->
+      <div class="tab-header">
+        <button class="tab-btn active" data-tab="log">监控日志</button>
+        <button class="tab-btn" data-tab="chat">研究员频道</button>
       </div>
-      <div class="log-list" id="log-list"></div>
+
+      <!-- 标签页内容：监控日志 -->
+      <div class="tab-content" data-tab="log">
+        <div class="log-header">
+          <div>
+            <div class="log-title">
+              监控日志 / LOG
+              <span class="resource-help" data-tip="红：高风险 / 橙：次风险 / 默认：常规">i</span>
+            </div>
+            <div class="log-sub">记录当前实验体的关键事件与异常行为。</div>
+          </div>
+          <button class="btn-log" id="btn-alert-log">异常日志</button>
+        </div>
+        <div class="log-list" id="log-list"></div>
+      </div>
+
+      <!-- 标签页内容：研究员频道 -->
+      <div class="tab-content hidden" data-tab="chat">
+        <div class="chat-header">
+          <div>
+            <div class="chat-title">研究员频道 / RESEARCHER CHANNEL</div>
+            <div class="chat-meta">昵称：<span id="chat-username">——</span></div>
+          </div>
+          <div class="chat-status" id="chat-status">离线</div>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+          <input id="chat-input" type="text" maxlength="320" placeholder="按 Enter 发送消息" autocomplete="off" />
+          <button id="chat-send" class="btn-chat">发送</button>
+        </div>
+      </div>
     </aside>
   </div>
 
@@ -231,20 +256,6 @@
       <img src="arts/派蒙1.jpeg" alt="派蒙助手头像" draggable="false" />
     </div>
     <div class="paimon-message" id="paimon-message">保持监控</div>
-  </div>
-  <div class="chat-panel hidden" id="chat-panel">
-    <div class="chat-header">
-      <div>
-        <div class="chat-title">研究员频道</div>
-        <div class="chat-meta">昵称：<span id="chat-username">——</span></div>
-      </div>
-      <div class="chat-status" id="chat-status">离线</div>
-    </div>
-    <div class="chat-messages" id="chat-messages"></div>
-    <div class="chat-input">
-      <input id="chat-input" type="text" maxlength="320" placeholder="按 Enter 发送消息" autocomplete="off" />
-      <button id="chat-send" class="btn-chat">发送</button>
-    </div>
   </div>
   
   <!-- 独立功能入口 -->
