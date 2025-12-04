@@ -747,6 +747,7 @@ function getChatNickname() {
 
 // 标签页切换功能
 function switchTab(tabName) {
+  console.log('switchTab called:', tabName); // 调试日志
   currentTab = tabName;
 
   // 更新标签按钮状态
@@ -766,6 +767,9 @@ function switchTab(tabName) {
     setTimeout(() => chatInput?.focus(), 80);
   }
 }
+
+// 暴露到全局作用域用于调试
+window.debugSwitchTab = switchTab;
 
 function setChatStatus(text, online = false) {
   if (chatStatus) {
@@ -862,6 +866,7 @@ function sendChatMessage() {
 }
 
 function initChat() {
+  console.log('initChat called'); // 调试日志
   renderChatUser();
   if (chatSend) chatSend.addEventListener("click", sendChatMessage);
   if (chatInput) {
@@ -871,8 +876,12 @@ function initChat() {
   }
 
   // 绑定标签页切换事件
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  console.log('Found tab buttons:', tabBtns.length); // 调试日志
+  tabBtns.forEach((btn, index) => {
+    console.log(`Binding tab button ${index}:`, btn.dataset.tab); // 调试日志
     btn.addEventListener('click', () => {
+      console.log('Tab button clicked:', btn.dataset.tab); // 调试日志
       switchTab(btn.dataset.tab);
     });
   });
