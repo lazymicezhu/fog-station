@@ -4,7 +4,7 @@
 > 约定：按顺序向下填写
 
 
-## 2024-12-01 16:00 — **🎉 重大重构：模块化架构升级 v1.0.0**
+## 2025-12-01 16:00 — **🎉 重大重构：模块化架构升级 v1.0.0**
   - **refactor(arch):** 完成全面架构重构，将 `subject_monitor.js`（1900行）拆分为多个职责清晰的模块
 
   **核心模块创建（7个）**：
@@ -87,7 +87,7 @@
 ## 2025-11-30 17:55 — 实时聊天室（助手入口）接入
   - **feat(chat):** 悬浮助手头像点击可打开/关闭聊天面板，拖拽头像不再误触开关，昵称沿用登录用户名。
   - **feat(chat):** 前端接入 WebSocket 聊天，自动重连、历史消息回放，文本安全截断（用户名 32 字、消息 320 字）。
-  - **backend(chat):** Pages Functions + Durable Object (`ChatRoom`) 提供 `/ws` WebSocket 广播，内存保存最近 50 条消息。
+  - **backend(zhuazhuachat):** Pages Functions + Durable Object (`ChatRoom`) 提供 `/ws` WebSocket 广播，内存保存最近 50 条消息。
   - **docs(chat):** 新增 `docs/systems/chat.md` 说明架构、消息格式、本地开发与部署要求。
   - **fix(chat):** 新增根级 `_worker.js`（入口改为 `_worker.js`）统一导出 DO 并路由 `/ws`，避免 wrangler pages dev 报 DO 未导出；聊天面板随助手拖动重新定位并加大尺寸，点击不再跳远。
   - **refactor(chat-ui):** 拖拽判定精简：pointerdown 记录起点，移动超阈值才加 `is-dragging`，pointerup 若未拖动且落点在头像内才切换聊天（移除 click 监听，避免拖动后误触）；阈值 4px，点击即可开关面板，拖动只移动助手。
@@ -112,7 +112,7 @@
   - **style(combat):** 添加 `.buff-tag` 和 `.dot-tag` 样式，采用半透明背景和边框，增强可读性。
   - **refactor(combat):** 重构 `executeSkill` 方法，添加 `attackerSide` 和 `defenderSide` 参数，便于状态管理。
   - **refactor(combat):** 新增 `processTurnStart` 方法，统一处理回合开始时的 DOT 结算、Buff 时效递减、CD 递减等逻辑。
-  - **refactor(combat):** 优化战斗日志输出，详细记录所有伤害、治疗、Buff 施加/移除、DOT 触发等事件。
+  - **refactor(combat):** l所有伤害、治疗、Buff 施加/移除、DOT 触发等事件。
   - **docs:** 新增 `docs/systems/战斗系统.md`，完整记录战斗系统的机制、数据结构、UI 展示与扩展性设计。
 
 ## 2025-11-27 15:10 — 战斗系统基础实现
