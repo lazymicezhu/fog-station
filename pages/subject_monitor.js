@@ -5,6 +5,7 @@ import { paimonMessages, paimonAlertText } from "../data/paimon_messages.js";
 import { initPlayerSubjects, getPlayerSubjects, getEnemyPool, SubjectInstance } from '../modules/cultivation.js';
 import { CombatSession } from '../modules/combat.js';
 import { SKILL_DB, ELEMENT_NAMES, ITEMS } from '../data/combat_data.js';
+import { getSystemPrompt } from '../data/game_knowledge.js';
 
 const subjects = subjectSeed.map(s => ({
   ...s,
@@ -108,10 +109,23 @@ let researchProgress = 0;
 let hudDebug = false;
 let paimonPosition = { x: null, y: null }; // 表示头像中心锚点位置
 let paimonDrag = { active: false, dragging: false, moved: false, pointerId: null, offsetX: 0, offsetY: 0, startX: 0, startY: 0 };
-let chatSocket = null;
-let chatReconnectTimer = null;
+// WebSocket 相关变量已移除，改为纯前端聊天
 const chatHistoryLimit = 80;
 let currentTab = 'log'; // 当前激活的标签页
+let isComposing = false; // 追踪输入法组合状态，防止输入法回车误触发
+
+// ChatGPT API 配置
+// ⚠️ 安全警告：在生产环境中，API密钥应该放在后端，不应暴露在前端代码中
+const CHATGPT_CONFIG = {
+  apiKey: 'sk-vfCUnN4KpRJpUSJn4mLyUsQcp9y0ozR4Ymc1cHMz19UYaPuU',
+  baseURL: 'https://api.lazymicezhu.com',
+  model: 'gpt-4.1',
+  maxTokens: 400,
+  temperature: 0.8
+};
+
+// 聊天历史记录（用于保持对话上下文）
+let chatHistory = [];
 
 const time = createTimeSystem({
   onTick: updateTimeDisplay,
@@ -760,10 +774,10 @@ function switchTab(tabName) {
     content.classList.toggle('hidden', content.dataset.tab !== tabName);
   });
 
-  // 如果切换到聊天标签，自动连接聊天并聚焦输入框
+  // 如果切换到聊天标签，聚焦输入框
   if (tabName === 'chat') {
     renderChatUser();
-    connectChatSocket();
+    setChatStatus("同步中", true);
     setTimeout(() => chatInput?.focus(), 80);
   }
 }
@@ -782,23 +796,76 @@ function renderChatUser() {
   if (chatUsername) chatUsername.textContent = getChatNickname();
 }
 
+/**
+ * 简单的 Markdown 渲染器
+ * 支持：**粗体**、*斜体*、`代码`、换行等
+ */
+function renderMarkdown(text) {
+  if (!text) return '';
+
+  // HTML 转义函数，防止 XSS
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  let html = escapeHtml(text);
+
+  // 1. 处理代码块（需要先处理，避免内部的其他标记被渲染）
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // 2. 处理粗体 **text**
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // 3. 处理斜体 *text*
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  // 4. 处理数字列表（1. 2. 3.）
+  html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<div class="list-item"><span class="list-number">$1.</span> $2</div>');
+
+  // 5. 处理换行（两个空格 + 换行 或 单独的换行）
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
+}
+
 function appendChatMessage({ user, text, ts }) {
   if (!chatMessagesEl) return;
   const item = document.createElement("div");
   item.className = "chat-item";
+
+  // 根据发送者添加不同的 class
+  if (user === "NEURO-SYNC") {
+    item.classList.add("chat-ai");
+  } else if (user === "系统") {
+    item.classList.add("chat-system");
+  } else {
+    item.classList.add("chat-user");
+  }
+
   const timeStr = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
   const meta = document.createElement("div");
   meta.className = "meta";
   const nameEl = document.createElement("span");
+  nameEl.className = "username";
   nameEl.textContent = user || "研究员";
   const timeEl = document.createElement("span");
+  timeEl.className = "timestamp";
   timeEl.textContent = timeStr;
   meta.appendChild(nameEl);
   meta.appendChild(timeEl);
 
   const textEl = document.createElement("div");
   textEl.className = "text";
-  textEl.textContent = text || "";
+
+  // 使用 Markdown 渲染（仅对 NEURO-SYNC 和系统消息）
+  if (user === "NEURO-SYNC" || user === "系统") {
+    textEl.innerHTML = renderMarkdown(text || "");
+  } else {
+    // 用户消息保持纯文本
+    textEl.textContent = text || "";
+  }
 
   item.appendChild(meta);
   item.appendChild(textEl);
@@ -809,59 +876,105 @@ function appendChatMessage({ user, text, ts }) {
   chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 }
 
-function handleChatMessage(event) {
-  let payload;
-  try {
-    payload = JSON.parse(event.data);
-  } catch (err) {
-    return;
+// WebSocket 代码已移除，以下为纯前端聊天功能
+
+/**
+ * 调用 ChatGPT API
+ */
+async function callChatGPT(userMessage) {
+  // 添加用户消息到历史
+  chatHistory.push({
+    role: 'user',
+    content: userMessage
+  });
+
+  // 保持历史记录在合理范围内（最多10条对话）
+  if (chatHistory.length > 20) {
+    // 保留系统提示词和最近的10条对话
+    chatHistory = [chatHistory[0], ...chatHistory.slice(-10)];
   }
-  if (payload.type === "history" && Array.isArray(payload.messages)) {
-    chatMessagesEl.innerHTML = "";
-    payload.messages.forEach(m => appendChatMessage(m));
-  } else if (payload.type === "chat") {
-    appendChatMessage(payload);
+
+  const response = await fetch(`${CHATGPT_CONFIG.baseURL}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${CHATGPT_CONFIG.apiKey}`
+    },
+    body: JSON.stringify({
+      model: CHATGPT_CONFIG.model,
+      messages: [
+        {
+          role: 'system',
+          content: getSystemPrompt()
+        },
+        ...chatHistory
+      ],
+      max_tokens: CHATGPT_CONFIG.maxTokens,
+      temperature: CHATGPT_CONFIG.temperature
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API请求失败: ${response.status} - ${errorText}`);
   }
+
+  const data = await response.json();
+  const aiReply = data.choices[0]?.message?.content || '抱歉，我无法生成回复。';
+
+  // 添加AI回复到历史
+  chatHistory.push({
+    role: 'assistant',
+    content: aiReply
+  });
+
+  return aiReply;
 }
 
-function connectChatSocket() {
-  if (chatSocket) return;
-  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const url = `${wsProtocol}//${window.location.host}/ws`;
-  setChatStatus("连接中...");
-  chatSocket = new WebSocket(url);
-
-  chatSocket.addEventListener("open", () => {
-    setChatStatus("在线", true);
-  });
-
-  chatSocket.addEventListener("message", handleChatMessage);
-
-  chatSocket.addEventListener("close", () => {
-    setChatStatus("已断开");
-    chatSocket = null;
-    if (chatReconnectTimer) clearTimeout(chatReconnectTimer);
-    chatReconnectTimer = setTimeout(connectChatSocket, 3000);
-  });
-
-  chatSocket.addEventListener("error", () => {
-    setChatStatus("连接异常");
-    if (chatSocket) chatSocket.close();
-  });
-}
-
-function sendChatMessage() {
+/**
+ * 发送聊天消息
+ */
+async function sendChatMessage() {
   const text = chatInput?.value?.trim();
   if (!text) return;
-  const payload = {
-    user: getChatNickname(),
-    text: text.slice(0, 320)
-  };
-  if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-    chatSocket.send(JSON.stringify(payload));
-    chatInput.value = "";
-  } else {
-    setChatStatus("未连接");
+
+  const nickname = getChatNickname();
+  const userMessage = text.slice(0, 320);
+
+  // 显示用户消息
+  appendChatMessage({
+    user: nickname,
+    text: userMessage,
+    ts: Date.now()
+  });
+
+  chatInput.value = "";
+
+  try {
+    setChatStatus("思考中...", true);
+
+    // 调用 ChatGPT API
+    const aiReply = await callChatGPT(userMessage);
+
+    // 显示AI回复
+    appendChatMessage({
+      user: "NEURO-SYNC",
+      text: aiReply,
+      ts: Date.now()
+    });
+
+    setChatStatus("同步中", true);
+  } catch (error) {
+    console.error('AI服务错误:', error);
+
+    // 显示错误消息
+    appendChatMessage({
+      user: "系统",
+      text: `AI服务暂时不可用: ${error.message}`,
+      ts: Date.now()
+    });
+
+    setChatStatus("连接异常", false);
   }
 }
 
@@ -870,8 +983,21 @@ function initChat() {
   renderChatUser();
   if (chatSend) chatSend.addEventListener("click", sendChatMessage);
   if (chatInput) {
+    // 监听输入法组合开始
+    chatInput.addEventListener("compositionstart", () => {
+      isComposing = true;
+    });
+
+    // 监听输入法组合结束
+    chatInput.addEventListener("compositionend", () => {
+      isComposing = false;
+    });
+
+    // 监听回车键，但要排除输入法组合中的回车
     chatInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") sendChatMessage();
+      if (e.key === "Enter" && !isComposing) {
+        sendChatMessage();
+      }
     });
   }
 
@@ -892,6 +1018,18 @@ function initChat() {
       renderChatUser();
     }
   });
+
+  // 显示初始欢迎消息（仅首次）
+  if (!localStorage.getItem('chat_initialized')) {
+    setTimeout(() => {
+      appendChatMessage({
+        user: "NEURO-SYNC",
+        text: "**神经同步系统已激活**\n\n研究员，欢迎接入 Fog Station 监控网络。我是 NEURO-SYNC，你的 AI 协助模块。\n\n我可以帮助你了解：\n1. **监控系统** 操作方法\n2. **实验体** 特性与异化进程\n3. **资源管理** 策略建议\n\n有任何疑问，随时向我咨询。记住：*保持警觉，记录一切*。",
+        ts: Date.now()
+      });
+      localStorage.setItem('chat_initialized', 'true');
+    }, 500);
+  }
 }
 
 function refillQueue(color) {

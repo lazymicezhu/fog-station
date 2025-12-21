@@ -8,9 +8,9 @@
 ## 特性
 
 - **实时监控** - 动态生命体征显示和异化进度跟踪
-- **多人聊天** - 基于 WebSocket 的实时研究员频道
+- **世界频道** - 研究员频道（待接入AI智能回复）
 - **战斗系统** - 回合制战斗，元素反应机制
-- **数据持久化** - 自动保存游戏进度
+- **数据持久化** - 本地存储游戏进度
 - **赛博朋克风格** - 终端式 UI 设计
 - **响应式布局** - 支持不同屏幕尺寸
 
@@ -19,8 +19,7 @@
 - **前端**: 原生 JavaScript (ES6+)
 - **构建工具**: Vite
 - **样式**: CSS3 (模块化)
-- **部署**: Cloudflare Workers + Pages
-- **WebSocket**: Cloudflare Durable Objects
+- **部署**: 纯静态网站（可部署到任何静态托管服务）
 
 ## 快速开始
 
@@ -109,11 +108,8 @@ Fog-station/
 │   │   ├── variables.css # 设计变量
 │   │   └── reset.css     # 重置样式
 │   └── components/       # 组件样式
-├── functions/            # Cloudflare Functions
-│   └── ws.js            # WebSocket 处理
 ├── index.html           # 主页面
 ├── index.css            # 主样式
-├── _worker.js           # Cloudflare Worker
 ├── vite.config.js       # Vite 配置
 ├── package.json         # 项目配置
 └── README.md           # 项目说明
@@ -141,31 +137,28 @@ Fog-station/
 
 ## 部署
 
-### Cloudflare Pages
+本项目是纯静态网站，可以部署到任何静态托管服务：
+
+### GitHub Pages
 
 ```bash
-# 部署到 Cloudflare Pages
-npm run deploy
+# 构建项目
+npm run build
 
-# 或使用 wrangler 命令
-wrangler pages deploy dist
+# 将 dist 目录推送到 gh-pages 分支
 ```
 
-### 配置 Durable Objects
+### Netlify / Vercel
 
-在 `wrangler.toml` 中配置：
+直接连接 GitHub 仓库，设置构建命令为 `npm run build`，输出目录为 `dist`。
 
-```toml
-name = "fog-station"
-compatibility_date = "2024-01-01"
+### 自定义服务器
 
-[[durable_objects.bindings]]
-name = "CHAT_ROOM"
-class_name = "ChatRoom"
-script_name = "fog-station"
+```bash
+# 构建项目
+npm run build
 
-[site]
-bucket = "./dist"
+# 将 dist 目录复制到服务器的 web 根目录
 ```
 
 ## 游戏机制
@@ -222,7 +215,6 @@ bucket = "./dist"
 ## 鸣谢
 
 - 设计灵感来自赛博朋克和实验室主题
-- 使用了 Cloudflare Workers 和 Durable Objects
 - 字体: Roboto Mono, Noto Sans SC
 
 ## 联系方式

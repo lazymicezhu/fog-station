@@ -11,8 +11,7 @@
     "lint:fix": "./node_modules/.bin/eslint . --ext .js --fix",
     "test": "./node_modules/.bin/vitest",
     "test:ui": "./node_modules/.bin/vitest --ui",
-    "test:coverage": "./node_modules/.bin/vitest --coverage",
-    "deploy": "npm run build && wrangler pages deploy dist"
+    "test:coverage": "./node_modules/.bin/vitest --coverage"
   },
   "keywords": [
     "interactive-narrative",

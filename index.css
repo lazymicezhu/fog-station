@@ -1259,13 +1259,91 @@ header .status {
   color: #9bdfff;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
+
+/* 用户名样式 */
+.chat-item .meta .username {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.chat-item .meta .timestamp {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* AI 消息（NEURO-SYNC）样式 */
+.chat-item.chat-ai .meta .username {
+  color: #58a6ff;
+  text-shadow: 0 0 8px rgba(88, 166, 255, 0.5);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 用户消息样式 */
+.chat-item.chat-user .meta .username {
+  color: #ffa657;
+  text-shadow: 0 0 6px rgba(255, 166, 87, 0.4);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 系统消息样式 */
+.chat-item.chat-system .meta .username {
+  color: #8b949e;
+  font-size: 13px;
+  font-weight: 600;
+  font-style: italic;
+}
+
 .chat-item .text {
   font-size: 13px;
   color: #dbe9ff;
   line-height: 1.5;
   word-break: break-word;
 }
+
+/* Markdown 样式 */
+.chat-item .text strong {
+  font-weight: 700;
+  color: #f0f6fc;
+  text-shadow: 0 0 2px rgba(88, 166, 255, 0.3);
+}
+
+.chat-item .text em {
+  font-style: italic;
+  color: #89cff0;
+}
+
+.chat-item .text code {
+  background: rgba(110, 118, 129, 0.2);
+  color: #79c0ff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid rgba(137, 207, 235, 0.15);
+}
+
+.chat-item .text .list-item {
+  margin: 4px 0;
+  padding-left: 8px;
+}
+
+.chat-item .text .list-number {
+  color: var(--color-cyan);
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.chat-item .text br {
+  line-height: 1.8;
+}
+
 .chat-input {
   display: flex;
   gap: var(--space-2);
