@@ -134,6 +134,14 @@
             </div>
           </div>
         </div>
+        <div class="worldview-overlay hidden" id="worldview-overlay">
+          <div class="worldview-bg" id="worldview-bg"></div>
+          <div class="worldview-panel">
+            <div class="worldview-title">世界观 · WORLDVIEW</div>
+            <div class="worldview-text" id="worldview-text"></div>
+            <button class="worldview-skip" id="worldview-skip">跳过</button>
+          </div>
+        </div>
         <div class="screen-footer"></div>
       </div>
 
@@ -238,6 +246,7 @@
           <div>
             <div class="chat-title">研究员频道 / RESEARCHER CHANNEL</div>
             <div class="chat-meta">昵称：<span id="chat-username">——</span></div>
+            <div class="chat-hint">任何问题，请向我提问</div>
           </div>
           <div class="chat-status" id="chat-status">离线</div>
         </div>
@@ -261,6 +270,7 @@
   <!-- 独立功能入口 -->
   <div class="floating-menu">
     <button id="btn-open-management" class="btn-float">实验体管理</button>
+    <button id="btn-open-notes" class="btn-float">笔记</button>
     <button id="btn-combat-entry" class="btn-float btn-combat">神经同步</button>
   </div>
 </div>
@@ -292,6 +302,32 @@
     </div>
     <div class="panel-body" id="management-list">
       <!-- Injected by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Notes Overlay -->
+<div id="notes-overlay" class="overlay-panel hidden">
+  <div class="panel-window notes-window">
+    <div class="panel-header">
+      <span>FIELD NOTES</span>
+      <button id="btn-close-notes" class="btn-close">CLOSE</button>
+    </div>
+    <div class="notes-body">
+      <div class="notes-list" id="notes-list"></div>
+      <div class="notes-detail">
+        <div class="notes-title" id="notes-title">暂无笔记</div>
+        <div class="notes-meta" id="notes-meta">——</div>
+        <div class="notes-content" id="notes-content">尚未解锁可阅读的记录。</div>
+        <div class="notes-actions" id="notes-actions">
+          <div class="notes-achievement" id="notes-achievement"></div>
+          <button id="btn-notes-restart" class="btn">重新开始</button>
+        </div>
+      </div>
+    </div>
+    <div class="notes-achievements">
+      <div class="notes-achievements-title">成就</div>
+      <div class="notes-achievements-list" id="notes-achievements-list"></div>
     </div>
   </div>
 </div>

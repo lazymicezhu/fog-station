@@ -19,6 +19,9 @@ const subjects = subjectSeed.map(s => ({
   lastHeartAlert: false,
   lastBrainAlert: false
 }));
+let NOTE_ENTRIES = [];
+let notesReady = false;
+const notesInitPromise = initNotes();
 let currentSubject = null;
 
 // DOM 引用
@@ -78,6 +81,774 @@ const chatInput = document.getElementById("chat-input");
 const chatSend = document.getElementById("chat-send");
 const chatStatus = document.getElementById("chat-status");
 const chatUsername = document.getElementById("chat-username");
+const btnOpenNotes = document.getElementById("btn-open-notes");
+const btnCloseNotes = document.getElementById("btn-close-notes");
+const notesOverlay = document.getElementById("notes-overlay");
+const notesListEl = document.getElementById("notes-list");
+const notesTitleEl = document.getElementById("notes-title");
+const notesMetaEl = document.getElementById("notes-meta");
+const notesContentEl = document.getElementById("notes-content");
+const notesActionsEl = document.getElementById("notes-actions");
+const notesAchievementEl = document.getElementById("notes-achievement");
+const btnNotesRestart = document.getElementById("btn-notes-restart");
+const notesAchievementsListEl = document.getElementById("notes-achievements-list");
+const worldviewOverlay = document.getElementById("worldview-overlay");
+const worldviewBg = document.getElementById("worldview-bg");
+const worldviewTextEl = document.getElementById("worldview-text");
+const worldviewSkip = document.getElementById("worldview-skip");
+
+const NOTES_STORAGE_KEY = "fog_station_notes_state";
+const ENDING_ACHIEVEMENTS_KEY = "fog_station_ending_achievements";
+let notesState = loadNotesState();
+let endingAchievements = loadEndingAchievements();
+let lastResearchProgress = 0;
+
+async function initNotes() {
+  try {
+    const [storyMd, endingMd, outlineMd] = await Promise.all([
+      fetch("docs/scripts/实验体剧情.md").then(res => res.ok ? res.text() : ""),
+      fetch("docs/scripts/结局.md").then(res => res.ok ? res.text() : ""),
+      fetch("docs/scripts/剧情大纲.md").then(res => res.ok ? res.text() : "")
+    ]);
+    const subjectEntries = parseSubjectStoryMarkdown(storyMd);
+    const endingEntries = parseEndingMarkdown(endingMd);
+    const outlineEntries = parseOutlineMarkdown(outlineMd);
+    NOTE_ENTRIES = [...outlineEntries, ...subjectEntries, ...endingEntries];
+    if (NOTE_ENTRIES.length === 0) {
+      NOTE_ENTRIES = buildFallbackNotes(subjectSeed);
+    }
+  } catch (err) {
+    console.warn("Failed to load notes markdown, using fallback.", err);
+    NOTE_ENTRIES = buildFallbackNotes(subjectSeed);
+  } finally {
+    notesReady = true;
+    syncNotesWithState();
+  }
+}
+
+function buildFallbackNotes(seed) {
+  return seed.flatMap(subject => {
+    const entries = [];
+    if (subject.note) {
+      entries.push({
+        id: `${subject.id}-note-00`,
+        subjectId: subject.id,
+        title: `${subject.name} · 初始记录`,
+        content: subject.note,
+        unlock: { type: "observe" }
+      });
+    }
+    return entries;
+  });
+}
+
+function parseSubjectStoryMarkdown(md = "") {
+  const lines = md.split(/\r?\n/);
+  const entries = [];
+  let sectionName = null;
+  let sectionSubjectId = null;
+  let currentEntry = null;
+  let buffer = [];
+
+  const finalize = () => {
+    if (!currentEntry) return;
+    const content = buffer.join("\n").trim();
+    if (content) {
+      currentEntry.content = content;
+      entries.push(currentEntry);
+    }
+    currentEntry = null;
+    buffer = [];
+  };
+
+  lines.forEach(raw => {
+    const line = raw.trim();
+    const h2 = line.match(/^##\s+(.*)$/);
+    const h3 = line.match(/^###\s+(.*)$/);
+
+    if (h2) {
+      finalize();
+      sectionName = h2[1].trim();
+      sectionSubjectId = resolveSubjectId(sectionName);
+      return;
+    }
+
+    if (h3) {
+      finalize();
+      if (!sectionName) return;
+      const title = h3[1].trim();
+      const match = title.match(/(\d+)%/);
+      if (!match) return;
+      const value = parseInt(match[1], 10);
+      const subjectId = sectionSubjectId || "GLOBAL";
+      const displayName = sectionSubjectId ? sectionName : "通用";
+      currentEntry = {
+        id: `${subjectId}-shift-${value}`,
+        subjectId,
+        title: `${displayName} · 异化 ${value}%`,
+        unlock: { type: "shift", value }
+      };
+      return;
+    }
+
+    if (currentEntry) {
+      buffer.push(raw);
+    }
+  });
+
+  finalize();
+  return entries;
+}
+
+function parseEndingMarkdown(md = "") {
+  const lines = md.split(/\r?\n/);
+  const entries = [];
+  let sectionTitle = null;
+  let buffer = [];
+
+  const finalize = () => {
+    if (!sectionTitle) return;
+    const content = buffer.join("\n").trim();
+    if (content) {
+      const endingId = resolveEndingId(sectionTitle);
+      entries.push({
+        id: endingId,
+        subjectId: "ENDING",
+        title: `结局 · ${sectionTitle}`,
+        content,
+        unlock: { type: "ending", value: endingId }
+      });
+    }
+    sectionTitle = null;
+    buffer = [];
+  };
+
+  lines.forEach(raw => {
+    const line = raw.trim();
+    const h2 = line.match(/^##\s+(.*)$/);
+    if (h2) {
+      finalize();
+      sectionTitle = h2[1].trim();
+      return;
+    }
+    if (sectionTitle) {
+      buffer.push(raw);
+    }
+  });
+
+  finalize();
+  return entries;
+}
+
+function parseOutlineMarkdown(md = "") {
+  const text = md.trim();
+  if (!text) return [];
+  const lines = md.split(/\r?\n/);
+  const entries = [];
+  let current = null;
+  let buffer = [];
+  let blockIndex = 0;
+
+  const finalize = () => {
+    if (!current) return;
+    const content = buffer.join("\n").trim();
+    if (content) {
+      current.content = content;
+      entries.push(current);
+    }
+    current = null;
+    buffer = [];
+  };
+
+  const startBlock = (title, unlockValue, category, unlockType = "research") => {
+    finalize();
+    current = {
+      id: `outline-${blockIndex++}`,
+      subjectId: "OUTLINE",
+      title,
+      category,
+      unlock: { type: unlockType, value: unlockValue }
+    };
+  };
+
+  lines.forEach(raw => {
+    const line = raw.trim();
+    if (!line) {
+      if (current) buffer.push(raw);
+      return;
+    }
+
+    const worldview = line.match(/^世界观[:：]/);
+    if (worldview) {
+      startBlock("世界观", 0, "outline", "intro");
+      return;
+    }
+
+    const diary = line.match(/剧情\s*[（(]日记[）)]\s*实验进度\s*(\d+)\s*%?\s*-\s*(\d+)\s*%/);
+    if (diary) {
+      const upper = parseInt(diary[2], 10);
+      startBlock(`实验日记 · 进度 ${diary[1]}% - ${diary[2]}%`, upper, "diary");
+      return;
+    }
+
+    const logRecord = line.match(/实验日志追加记录.*实验进度\s*(\d+)\s*%/);
+    if (logRecord) {
+      const value = parseInt(logRecord[1], 10);
+      startBlock(line, value, "log");
+      return;
+    }
+
+    if (current) {
+      buffer.push(raw);
+    }
+  });
+
+  finalize();
+  return entries.length ? entries : [{
+    id: "outline-main",
+    subjectId: "OUTLINE",
+    title: "剧情大纲",
+    content: text,
+    category: "outline",
+    unlock: { type: "research", value: 0 }
+  }];
+}
+
+function resolveSubjectId(title) {
+  if (!title) return null;
+  const normalized = title.replace(/[\s【】\[\]\(\)（）]/g, "");
+  if (normalized.includes("通用")) return "GLOBAL";
+
+  const alias = {
+    "小咪": "S-01",
+    "猫": "S-01",
+    "马楼": "S-07",
+    "猕猴": "S-07",
+    "钢铁志愿": "S-32",
+    "钢脉志愿": "S-32"
+  };
+  if (alias[normalized]) return alias[normalized];
+
+  const found = subjectSeed.find(s => normalized.includes(s.name.replace(/\s+/g, "")));
+  return found ? found.id : null;
+}
+
+function resolveEndingId(title) {
+  if (title.includes("牺牲")) return "ending-sacrifice";
+  if (title.includes("共存")) return "ending-coexist";
+  if (title.includes("悲剧")) return "ending-tragedy";
+  if (title.includes("隐藏")) return "ending-hidden";
+  return `ending-${title.replace(/\s+/g, "-")}`;
+}
+
+function renderNotesMarkdown(md = "") {
+  const lines = md.split(/\r?\n/);
+  const html = [];
+  let inList = false;
+  let paraLines = [];
+  let keyIdeaNext = false;
+
+  const escapeHtml = (text) =>
+    text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const formatInline = (text) => {
+    let out = escapeHtml(text);
+    out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/\*(.+?)\*/g, "<em>$1</em>");
+    return out;
+  };
+
+  const flushParagraph = () => {
+    if (paraLines.length === 0) return;
+    const text = paraLines.map(formatInline).join("<br>");
+    if (keyIdeaNext) {
+      html.push(`<p class="notes-key">${text}</p>`);
+      keyIdeaNext = false;
+    } else {
+      html.push(`<p>${text}</p>`);
+    }
+    paraLines = [];
+  };
+
+  const closeList = () => {
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+  };
+
+  lines.forEach(raw => {
+    const line = raw.trim();
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    const list = line.match(/^-+\s+(.*)$/);
+
+    if (heading) {
+      flushParagraph();
+      closeList();
+      const level = heading[1].length;
+      const text = formatInline(heading[2].trim());
+      const isKeyIdea = /key\s*idea/i.test(heading[2]);
+      if (isKeyIdea) {
+        html.push(`<div class="notes-key-label">KEY IDEA</div>`);
+        keyIdeaNext = true;
+      } else {
+        html.push(`<h${level}>${text}</h${level}>`);
+      }
+      return;
+    }
+
+    if (list) {
+      flushParagraph();
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${formatInline(list[1])}</li>`);
+      return;
+    }
+
+    if (!line) {
+      flushParagraph();
+      closeList();
+      return;
+    }
+
+    paraLines.push(raw);
+  });
+
+  flushParagraph();
+  closeList();
+  return html.join("");
+}
+
+function loadNotesState() {
+  const raw = localStorage.getItem(NOTES_STORAGE_KEY);
+  if (!raw) return { unlocked: new Set(), seen: new Set() };
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      unlocked: new Set(parsed.unlocked || []),
+      seen: new Set(parsed.seen || [])
+    };
+  } catch (err) {
+    console.warn("Failed to load notes state", err);
+    return { unlocked: new Set(), seen: new Set() };
+  }
+}
+
+function saveNotesState() {
+  localStorage.setItem(
+    NOTES_STORAGE_KEY,
+    JSON.stringify({
+      unlocked: Array.from(notesState.unlocked),
+      seen: Array.from(notesState.seen)
+    })
+  );
+}
+
+function loadEndingAchievements() {
+  const raw = localStorage.getItem(ENDING_ACHIEVEMENTS_KEY);
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw);
+    return new Set(parsed || []);
+  } catch (err) {
+    console.warn("Failed to load ending achievements", err);
+    return new Set();
+  }
+}
+
+function saveEndingAchievements() {
+  localStorage.setItem(
+    ENDING_ACHIEVEMENTS_KEY,
+    JSON.stringify(Array.from(endingAchievements))
+  );
+}
+
+function recordEndingAchievement(note) {
+  if (!note || note.unlock?.type !== "ending") return;
+  if (endingAchievements.has(note.id)) return;
+  endingAchievements.add(note.id);
+  saveEndingAchievements();
+}
+
+function renderNotesList(activeId = null) {
+  if (!notesListEl) return;
+  notesListEl.innerHTML = "";
+  const unlockedNotes = NOTE_ENTRIES.filter(note => notesState.unlocked.has(note.id));
+  if (unlockedNotes.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "notes-item empty";
+    empty.innerHTML = `
+      <span class="notes-item-title">暂无已解锁记录</span>
+      <span class="notes-item-meta">触发剧情后自动记录</span>
+    `;
+    notesListEl.appendChild(empty);
+    return;
+  }
+
+  const groups = [
+    { key: "diary", label: "实验日记" },
+    { key: "log", label: "实验日志追加记录" },
+    { key: "outline", label: "剧情大纲" },
+    { key: "subject", label: "实验体剧情" },
+    { key: "ending", label: "结局" }
+  ];
+
+  const categorize = (note) => {
+    if (note.category) return note.category;
+    if (note.unlock?.type === "ending") return "ending";
+    if (note.subjectId === "OUTLINE") return "outline";
+    if (note.subjectId && note.subjectId !== "GLOBAL") return "subject";
+    return "subject";
+  };
+
+  groups.forEach(group => {
+    const groupNotes = unlockedNotes.filter(note => categorize(note) === group.key);
+    if (groupNotes.length === 0) return;
+    const header = document.createElement("div");
+    header.className = "notes-group-title";
+    header.textContent = group.label;
+    notesListEl.appendChild(header);
+
+    groupNotes.forEach(note => {
+      const item = document.createElement("div");
+      item.className = "notes-item";
+      if (note.id === activeId) item.classList.add("active");
+      item.innerHTML = `
+        <span class="notes-item-title">${note.title}</span>
+        <span class="notes-item-meta">${note.subjectId}</span>
+      `;
+      item.addEventListener("click", () => {
+        showNoteDetail(note);
+        renderNotesList(note.id);
+      });
+      notesListEl.appendChild(item);
+    });
+  });
+}
+
+function showNoteDetail(note) {
+  if (!note) return;
+  if (notesTitleEl) notesTitleEl.textContent = note.title;
+  if (notesMetaEl) {
+    let meta = note.subjectId;
+    if (note.unlock?.type === "shift") {
+      meta = `${note.subjectId} · 异化 ${note.unlock.value}%`;
+    } else if (note.unlock?.type === "research") {
+      meta = `研究进度 ${note.unlock.value}%`;
+    } else if (note.unlock?.type === "intro") {
+      meta = "世界观";
+    } else if (note.unlock?.type === "ending") {
+      meta = "结局";
+    }
+    notesMetaEl.textContent = meta;
+  }
+  if (notesContentEl) {
+    const content = note.content || "暂无内容。";
+    notesContentEl.innerHTML = renderNotesMarkdown(content);
+  }
+  renderAchievementsList();
+  if (notesActionsEl && notesAchievementEl && btnNotesRestart) {
+    if (note.unlock?.type === "ending") {
+      recordEndingAchievement(note);
+      notesActionsEl.style.display = "flex";
+      notesAchievementEl.textContent = `成就已记录：${note.title}`;
+      btnNotesRestart.style.display = "inline-flex";
+    } else {
+      notesActionsEl.style.display = "none";
+    }
+  }
+}
+
+async function openNotes(noteId = null) {
+  if (!notesOverlay) return;
+  if (!notesReady) {
+    if (notesTitleEl) notesTitleEl.textContent = "正在载入记录";
+    if (notesMetaEl) notesMetaEl.textContent = "——";
+    if (notesContentEl) notesContentEl.textContent = "系统正在解析文本，请稍候...";
+    await notesInitPromise;
+  }
+  notesOverlay.classList.remove("hidden");
+  renderAchievementsList();
+  if (noteId) {
+    const note = NOTE_ENTRIES.find(n => n.id === noteId);
+    if (note) {
+      showNoteDetail(note);
+      renderNotesList(noteId);
+      return;
+    }
+  }
+  renderNotesList();
+  const firstUnlocked = NOTE_ENTRIES.find(note => notesState.unlocked.has(note.id));
+  if (firstUnlocked) {
+    showNoteDetail(firstUnlocked);
+    renderNotesList(firstUnlocked.id);
+  }
+}
+
+function unlockNote(note) {
+  if (!note || notesState.unlocked.has(note.id)) return false;
+  notesState.unlocked.add(note.id);
+  saveNotesState();
+  return true;
+}
+
+function triggerNotesOnSelect(subject) {
+  if (!subject || !notesReady) return;
+  NOTE_ENTRIES.filter(note => note.subjectId === subject.id && note.unlock?.type === "observe")
+    .forEach(note => {
+      if (unlockNote(note) && !notesState.seen.has(note.id)) {
+        notesState.seen.add(note.id);
+        saveNotesState();
+        openNotes(note.id);
+      }
+    });
+}
+
+function triggerNotesOnShift(subject, prevShift, currentShift) {
+  if (!subject || !notesReady) return;
+  unlockShiftNotesForSubject(subject, prevShift, currentShift);
+  unlockShiftNotesForGlobal(prevShift, currentShift);
+}
+
+function unlockShiftNotesForSubject(subject, prevShift, currentShift) {
+  NOTE_ENTRIES.filter(note => note.subjectId === subject.id && note.unlock?.type === "shift")
+    .forEach(note => {
+      if (prevShift < note.unlock.value && currentShift >= note.unlock.value) {
+        if (unlockNote(note) && !notesState.seen.has(note.id)) {
+          notesState.seen.add(note.id);
+          saveNotesState();
+          openNotes(note.id);
+        }
+      }
+    });
+}
+
+function unlockShiftNotesForGlobal(prevShift, currentShift) {
+  NOTE_ENTRIES.filter(note => note.subjectId === "GLOBAL" && note.unlock?.type === "shift")
+    .forEach(note => {
+      if (prevShift < note.unlock.value && currentShift >= note.unlock.value) {
+        if (unlockNote(note) && !notesState.seen.has(note.id)) {
+          notesState.seen.add(note.id);
+          saveNotesState();
+          openNotes(note.id);
+        }
+      }
+    });
+}
+
+function unlockResearchNotes(prevProgress, currentProgress) {
+  NOTE_ENTRIES.filter(note => note.unlock?.type === "research")
+    .forEach(note => {
+      if (prevProgress < note.unlock.value && currentProgress >= note.unlock.value) {
+        if (unlockNote(note) && !notesState.seen.has(note.id)) {
+          notesState.seen.add(note.id);
+          saveNotesState();
+          openNotes(note.id);
+        }
+      }
+    });
+}
+
+function syncNotesWithState() {
+  if (!notesReady) return;
+  NOTE_ENTRIES.filter(note => note.unlock?.type === "intro")
+    .forEach(note => {
+      if (unlockNote(note)) {
+        saveNotesState();
+      }
+    });
+  subjects.forEach(subj => {
+    const shift = subj.shift || 0;
+    unlockShiftNotesForSubject(subj, 0, shift);
+  });
+  const maxShift = Math.max(...subjects.map(subj => subj.shift || 0), 0);
+  unlockShiftNotesForGlobal(0, maxShift);
+  unlockResearchNotes(0, researchProgress);
+  checkEndingUnlocks();
+  syncEndingAchievements();
+}
+
+function checkEndingUnlocks() {
+  if (!notesReady) return;
+  const endingNotes = NOTE_ENTRIES.filter(note => note.unlock?.type === "ending");
+  if (endingNotes.length === 0) return;
+
+  const lostCount = subjects.filter(isSubjectLost).length;
+  const anyLost = lostCount > 0;
+  const allLost = lostCount === subjects.length;
+  const s01 = subjects.find(s => s.id === "S-01");
+  const s07 = subjects.find(s => s.id === "S-07");
+  const s32 = subjects.find(s => s.id === "S-32");
+  const day = time?.getTime ? time.getTime().day : 1;
+
+  const unlockChecks = {
+    "ending-sacrifice": () => researchProgress >= 90 && allLost,
+    "ending-coexist": () => researchProgress >= 70 && lostCount >= 1 && !allLost,
+    "ending-tragedy": () => researchProgress < 40 && anyLost && day >= 4,
+    "ending-hidden": () =>
+      researchProgress >= 95 &&
+      (s01?.shift || 0) >= 100 &&
+      (s07?.shift || 0) >= 75 &&
+      (s32?.shift || 0) >= 75
+  };
+
+  endingNotes.forEach(note => {
+    const check = unlockChecks[note.id];
+    if (check && check()) {
+      if (unlockNote(note) && !notesState.seen.has(note.id)) {
+        notesState.seen.add(note.id);
+        saveNotesState();
+        openNotes(note.id);
+      }
+    }
+  });
+}
+
+function restartGame() {
+  try {
+    localStorage.removeItem("fog_station_game_state");
+    localStorage.removeItem("fog_station_game_time");
+    localStorage.removeItem("playerInventory");
+    localStorage.removeItem("fog_station_notes_state");
+    localStorage.removeItem("fog_station_combat_subjects");
+    localStorage.removeItem("chat_initialized");
+  } catch (err) {
+    console.warn("Failed to clear game state", err);
+  }
+  window.location.reload();
+}
+
+function syncEndingAchievements() {
+  NOTE_ENTRIES.filter(note => note.unlock?.type === "ending")
+    .forEach(note => {
+      if (notesState.unlocked.has(note.id)) {
+        recordEndingAchievement(note);
+      }
+    });
+  renderAchievementsList();
+}
+
+function renderAchievementsList() {
+  if (!notesAchievementsListEl) return;
+  notesAchievementsListEl.innerHTML = "";
+  const sorted = Array.from(endingAchievements);
+  if (sorted.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "notes-achievement-empty";
+    empty.textContent = "暂无已记录成就";
+    notesAchievementsListEl.appendChild(empty);
+    return;
+  }
+  sorted.forEach(id => {
+    const note = NOTE_ENTRIES.find(n => n.id === id);
+    const tag = document.createElement("div");
+    tag.className = "notes-achievement-tag";
+    tag.textContent = note ? note.title : id;
+    notesAchievementsListEl.appendChild(tag);
+  });
+}
+
+function maybePlayWorldviewIntro(gameLoaded, onComplete) {
+  if (gameLoaded) {
+    if (typeof onComplete === "function") onComplete();
+    return;
+  }
+  if (!worldviewOverlay || !worldviewTextEl || !worldviewBg) return;
+  const seen = localStorage.getItem("fog_station_worldview_seen");
+  if (seen) {
+    if (typeof onComplete === "function") onComplete();
+    return;
+  }
+
+  notesInitPromise.then(() => {
+    const note = NOTE_ENTRIES.find(n => n.unlock?.type === "intro");
+    if (!note || !note.content) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+    playWorldviewIntro(note.content, onComplete);
+  });
+}
+
+function playWorldviewIntro(text, onComplete) {
+  const images = [
+    "arts/大背景1.png",
+    "arts/大背景2.png",
+    "arts/大背景3.png",
+    "arts/迷雾1.png",
+    "arts/实验员研究1.png",
+    "arts/陨石研究1.png"
+  ];
+  const total = text.length;
+  const thresholds = images.map((_, i) => Math.floor((total / images.length) * i));
+  let nextImage = 0;
+  let index = 0;
+  let completed = false;
+
+  const setImage = (i) => {
+    if (!worldviewBg) return;
+    worldviewBg.style.opacity = "0";
+    setTimeout(() => {
+      worldviewBg.style.backgroundImage = `url('${images[i]}')`;
+      requestAnimationFrame(() => {
+        worldviewBg.style.opacity = "0.5";
+      });
+    }, 120);
+  };
+
+  if (worldviewOverlay) worldviewOverlay.classList.remove("hidden");
+  if (worldviewTextEl) worldviewTextEl.textContent = "";
+  if (worldviewSkip) worldviewSkip.textContent = "跳过";
+  setImage(0);
+
+  const timer = setInterval(() => {
+    index += 1;
+    if (worldviewTextEl) {
+      worldviewTextEl.textContent = text.slice(0, index);
+    }
+    if (nextImage + 1 < images.length && index >= thresholds[nextImage + 1]) {
+      nextImage += 1;
+      setImage(nextImage);
+    }
+    if (index >= total) {
+      finishTyping(timer);
+    }
+  }, 60);
+
+  const finishTyping = (handle) => {
+    clearInterval(handle);
+    completed = true;
+    if (worldviewSkip) worldviewSkip.textContent = "点击进入";
+  };
+
+  const closeIntro = () => {
+    localStorage.setItem("fog_station_worldview_seen", "true");
+    if (worldviewOverlay) worldviewOverlay.classList.add("hidden");
+    if (typeof onComplete === "function") onComplete();
+  };
+
+  if (worldviewSkip) {
+    worldviewSkip.onclick = () => {
+      if (!completed) {
+        if (worldviewTextEl) worldviewTextEl.textContent = text;
+        finishTyping(timer);
+      } else {
+        closeIntro();
+      }
+    };
+  }
+  worldviewOverlay.onclick = (evt) => {
+    if (evt.target === worldviewOverlay && completed) {
+      closeIntro();
+    }
+  };
+}
 
 const MAX_LOGS = 18;
 const DAILY_SAMPLE_PERMITS = 10;
@@ -153,6 +924,11 @@ function updateResourceUI() {
   if (researchFill) researchFill.style.width = `${progressValue}%`;
   if (researchText) researchText.textContent = `${progressValue.toFixed(1)}%`;
   updateNextDayButtonState();
+  checkEndingUnlocks();
+  if (notesReady) {
+    unlockResearchNotes(lastResearchProgress, researchProgress);
+  }
+  lastResearchProgress = researchProgress;
 }
 function updateNextDayButtonState() {
   if (!btnNextDay || !time || !time.getTime) return;
@@ -264,6 +1040,7 @@ function selectSubject(idx) {
   if (guideActive && guideStepIndex === 0) {
     setGuideStep(1);
   }
+  triggerNotesOnSelect(currentSubject);
 }
 
 function setSilhouetteAppearance(id) {
@@ -475,6 +1252,7 @@ btnSample.addEventListener("click", () => {
     "sample",
     currentShift
   );
+  triggerNotesOnShift(currentSubject, prevShift, currentShift);
   if (guideActive) {
     if (guideStepIndex === 2) {
       setGuideStep(guideStepIndex + 1);
@@ -958,6 +1736,11 @@ async function sendChatMessage() {
 
   chatInput.value = "";
 
+  const handled = handleChatCommand(userMessage);
+  if (handled) {
+    return;
+  }
+
   try {
     setChatStatus("思考中...", true);
 
@@ -984,6 +1767,33 @@ async function sendChatMessage() {
 
     setChatStatus("连接异常", false);
   }
+}
+
+function handleChatCommand(command) {
+  const normalized = command.toLowerCase();
+  if (normalized === "restart_lazymice") {
+    appendChatMessage({
+      user: "系统",
+      text: "指令确认：清除本地存储并重启世界观。",
+      ts: Date.now()
+    });
+    localStorage.clear();
+    window.location.reload();
+    return true;
+  }
+  if (normalized === "10x_lazymice") {
+    ITEMS.forEach(item => {
+      addItemToInventory(item.id, 10);
+    });
+    updateResourceUI();
+    appendChatMessage({
+      user: "系统",
+      text: "已发放：所有道具 x10。",
+      ts: Date.now()
+    });
+    return true;
+  }
+  return false;
 }
 
 function initChat() {
@@ -1592,6 +2402,62 @@ function setGuideStep(step) {
     guideOverlay?.style.removeProperty("--guide-hole-r");
   }
 }
+// 玩家道具库存系统
+let playerInventory = {
+  // 治疗类
+  'heal_s': 5,           // 纳米修补剂(白) x5
+  'heal_m': 3,           // 纳米修补剂(蓝) x3
+  'heal_l': 1,           // 纳米修补剂(紫) x1
+  // 增益类
+  'buff_atk_s': 3,       // 过载注射(白) x3
+  'buff_atk_m': 1,       // 过载注射(蓝) x1
+  'buff_def_s': 2,       // 护盾生成器 x2
+  // 资源类
+  'stabilizer': stabilizerCount || 3,      // 稳定剂
+  'sample_permit': samplePermits || 10,    // 采集许可
+  'research_data': 0     // 研究数据
+};
+
+// 保存/加载道具库存
+function saveInventory() {
+  localStorage.setItem('playerInventory', JSON.stringify(playerInventory));
+}
+
+function loadInventory() {
+  const saved = localStorage.getItem('playerInventory');
+  if (saved) {
+    try {
+      playerInventory = JSON.parse(saved);
+      // 同步稳定剂和采集许可到全局变量
+      if (playerInventory.stabilizer !== undefined) {
+        stabilizerCount = playerInventory.stabilizer;
+      }
+      if (playerInventory.sample_permit !== undefined) {
+        samplePermits = playerInventory.sample_permit;
+      }
+    } catch (e) {
+      console.error('加载库存失败:', e);
+    }
+  }
+}
+
+// 添加道具到库存
+function addItemToInventory(itemId, count = 1) {
+  if (playerInventory[itemId] === undefined) {
+    playerInventory[itemId] = 0;
+  }
+  playerInventory[itemId] += count;
+
+  // 同步资源类道具到全局变量
+  if (itemId === 'stabilizer') {
+    stabilizerCount = playerInventory.stabilizer;
+  } else if (itemId === 'sample_permit') {
+    samplePermits = playerInventory.sample_permit;
+  }
+
+  saveInventory();
+}
+
 renderSubjectList();
 renderPreviewGrid();
 showPreview();
@@ -1607,17 +2473,16 @@ assignDailyStatuses(true);
 updateResourceUI(); // 确保UI显示正确的资源状态
 updateNextDayButtonState();
 time.start();
+const shouldStartGuide = !gameLoaded || !localStorage.getItem('tutorial_completed');
+maybePlayWorldviewIntro(gameLoaded, () => {
+    if (shouldStartGuide) startGuide();
+});
 
 // 根据是否加载存档显示不同的日志
 if (gameLoaded) {
     addLog("系统恢复：游戏进度已加载。");
 } else {
     addLog("系统启动：展示实验舱预览，等待选择实验体。");
-}
-
-// 只在新游戏时启动教程
-if (!gameLoaded || !localStorage.getItem('tutorial_completed')) {
-    startGuide();
 }
 
 // 如果加载了存档，刷新预览界面以显示正确的实验体状态
@@ -1636,61 +2501,7 @@ const combatOverlay = document.getElementById('combat-overlay');
 const btnCombatExit = document.getElementById('btn-combat-exit');
 let currentCombat = null;
 
-// 玩家道具库存系统
-let playerInventory = {
-    // 治疗类
-    'heal_s': 5,           // 纳米修补剂(白) x5
-    'heal_m': 3,           // 纳米修补剂(蓝) x3
-    'heal_l': 1,           // 纳米修补剂(紫) x1
-    // 增益类
-    'buff_atk_s': 3,       // 过载注射(白) x3
-    'buff_atk_m': 1,       // 过载注射(蓝) x1
-    'buff_def_s': 2,       // 护盾生成器 x2
-    // 资源类
-    'stabilizer': stabilizerCount || 3,      // 稳定剂
-    'sample_permit': samplePermits || 10,    // 采集许可
-    'research_data': 0     // 研究数据
-};
-
-// 保存/加载道具库存
-function saveInventory() {
-    localStorage.setItem('playerInventory', JSON.stringify(playerInventory));
-}
-
-function loadInventory() {
-    const saved = localStorage.getItem('playerInventory');
-    if (saved) {
-        try {
-            playerInventory = JSON.parse(saved);
-            // 同步稳定剂和采集许可到全局变量
-            if (playerInventory.stabilizer !== undefined) {
-                stabilizerCount = playerInventory.stabilizer;
-            }
-            if (playerInventory.sample_permit !== undefined) {
-                samplePermits = playerInventory.sample_permit;
-            }
-        } catch (e) {
-            console.error('加载库存失败:', e);
-        }
-    }
-}
-
-// 添加道具到库存
-function addItemToInventory(itemId, count = 1) {
-    if (playerInventory[itemId] === undefined) {
-        playerInventory[itemId] = 0;
-    }
-    playerInventory[itemId] += count;
-
-    // 同步资源类道具到全局变量
-    if (itemId === 'stabilizer') {
-        stabilizerCount = playerInventory.stabilizer;
-    } else if (itemId === 'sample_permit') {
-        samplePermits = playerInventory.sample_permit;
-    }
-
-    saveInventory();
-}
+// 玩家道具库存系统已提前初始化
 
 // ==========================================
 // 游戏状态保存/加载系统
@@ -1975,6 +2786,26 @@ if (btnOpenManage) {
 if (btnCloseManage) {
     btnCloseManage.addEventListener('click', () => {
         manageOverlay.classList.add('hidden');
+    });
+}
+
+if (btnOpenNotes) {
+    btnOpenNotes.addEventListener('click', () => {
+        openNotes();
+    });
+}
+
+if (btnCloseNotes) {
+    btnCloseNotes.addEventListener('click', () => {
+        notesOverlay.classList.add('hidden');
+    });
+}
+
+if (btnNotesRestart) {
+    btnNotesRestart.addEventListener('click', () => {
+        window.sysConfirm("确定要重新开始吗？当前进度将被清空，结局成就会保留。", () => {
+            restartGame();
+        });
     });
 }
 
