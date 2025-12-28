@@ -871,7 +871,41 @@ export const SKILL_DB = {
 };
 
 export const ITEMS = [
-  { id: 'heal_s', name: '纳米修补剂(白)', type: 'heal', val: 80 },
-  { id: 'heal_m', name: '纳米修补剂(蓝)', type: 'heal', val: 160 },
-  { id: 'buff_atk_s', name: '过载注射(白)', type: 'buff_atk', val: 0.15, duration: 2 }
+  // 治疗类
+  { id: 'heal_s', name: '纳米修补剂(白)', type: 'heal', val: 80, desc: '恢复80点生命值', rarity: 'common' },
+  { id: 'heal_m', name: '纳米修补剂(蓝)', type: 'heal', val: 160, desc: '恢复160点生命值', rarity: 'uncommon' },
+  { id: 'heal_l', name: '纳米修补剂(紫)', type: 'heal', val: 300, desc: '恢复300点生命值', rarity: 'rare' },
+
+  // 增益类
+  { id: 'buff_atk_s', name: '过载注射(白)', type: 'buff_atk', val: 0.15, duration: 2, desc: '攻击力提升15%，持续2回合', rarity: 'common' },
+  { id: 'buff_atk_m', name: '过载注射(蓝)', type: 'buff_atk', val: 0.25, duration: 3, desc: '攻击力提升25%，持续3回合', rarity: 'uncommon' },
+  { id: 'buff_def_s', name: '护盾生成器', type: 'buff_shield', val: 80, desc: '获得80点护盾', rarity: 'common' },
+
+  // 资源类（不在战斗中使用）
+  { id: 'stabilizer', name: '稳定剂', type: 'resource', desc: '可以抵消一次异化增长', rarity: 'uncommon', inCombat: false },
+  { id: 'sample_permit', name: '采集许可', type: 'resource', desc: '允许进行一次样本采集', rarity: 'common', inCombat: false },
+  { id: 'research_data', name: '研究数据', type: 'resource', desc: '增加研究进度', rarity: 'rare', inCombat: false }
 ];
+
+// 战斗掉落表
+export const DROP_TABLE = {
+  common: [
+    { id: 'heal_s', weight: 40 },
+    { id: 'buff_atk_s', weight: 25 },
+    { id: 'sample_permit', weight: 20 },
+    { id: 'buff_def_s', weight: 15 }
+  ],
+  uncommon: [
+    { id: 'heal_m', weight: 30 },
+    { id: 'stabilizer', weight: 25 },
+    { id: 'buff_atk_m', weight: 20 },
+    { id: 'sample_permit', weight: 15 },
+    { id: 'research_data', weight: 10 }
+  ],
+  rare: [
+    { id: 'heal_l', weight: 35 },
+    { id: 'stabilizer', weight: 30 },
+    { id: 'research_data', weight: 25 },
+    { id: 'buff_atk_m', weight: 10 }
+  ]
+};

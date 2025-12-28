@@ -1,5 +1,5 @@
 // modules/combat.js
-import { ELEMENT_CHART, SKILL_DB, ITEMS } from '../data/combat_data.js';
+import { ELEMENT_CHART, SKILL_DB, ITEMS, DROP_TABLE } from '../data/combat_data.js';
 import { savePlayerSubjects } from './cultivation.js';
 
 export class CombatSession {
@@ -519,6 +519,9 @@ export class CombatSession {
                 duration: item.duration || 2
             });
             this.onLog(`  ⚡ 攻击力提升 ${(item.val * 100).toFixed(0)}% (${item.duration || 2}回合)`);
+        } else if (item.type === 'buff_shield') {
+            this.shields.player += item.val;
+            this.onLog(`  🛡️ 获得 ${item.val} 点护盾`);
         }
 
         this.onUpdate();
@@ -552,10 +555,67 @@ export class CombatSession {
             if (res.leveled) this.onLog(`系统提示：${this.player.getName()} 获得了成长。`);
             if (res.evolved) this.onLog(`系统警报：${this.player.getName()} 发生了突变进化！`);
 
+            // 战斗掉落系统
+            this.onLog(`\n正在回收战场物资...`);
+            const drops = this.generateDrops();
+            if (drops.length > 0) {
+                this.onLog(`获得掉落物品：`);
+                drops.forEach(drop => {
+                    const item = ITEMS.find(i => i.id === drop.id);
+                    this.onLog(`  ├─ ${item.name} x${drop.count}`);
+                });
+
+                // 触发掉落回调（传递给UI层处理库存更新）
+                if (this.onEvent) {
+                    this.onEvent('battle_drops', drops);
+                }
+            } else {
+                this.onLog(`未发现可回收物资。`);
+            }
+
             savePlayerSubjects();
             this.onUpdate();
             return true;
         }
         return false;
+    }
+
+    // 生成战斗掉落
+    generateDrops() {
+        const drops = [];
+        const dropCount = Math.floor(Math.random() * 3) + 1; // 掉落1-3个物品
+
+        for (let i = 0; i < dropCount; i++) {
+            // 确定掉落稀有度
+            const rarityRoll = Math.random() * 100;
+            let rarity;
+            if (rarityRoll < 60) {
+                rarity = 'common';
+            } else if (rarityRoll < 90) {
+                rarity = 'uncommon';
+            } else {
+                rarity = 'rare';
+            }
+
+            // 从对应稀有度的掉落表中选择物品
+            const pool = DROP_TABLE[rarity];
+            const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+            let roll = Math.random() * totalWeight;
+
+            for (const dropItem of pool) {
+                roll -= dropItem.weight;
+                if (roll <= 0) {
+                    const existing = drops.find(d => d.id === dropItem.id);
+                    if (existing) {
+                        existing.count++;
+                    } else {
+                        drops.push({ id: dropItem.id, count: 1 });
+                    }
+                    break;
+                }
+            }
+        }
+
+        return drops;
     }
 }

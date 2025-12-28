@@ -54,12 +54,41 @@ export function createTimeSystem({ onTick, onDayChange } = {}) {
     return { ...gameTime };
   }
 
+  // 保存时间到localStorage
+  function saveTime() {
+    localStorage.setItem('fog_station_game_time', JSON.stringify(gameTime));
+  }
+
+  // 从localStorage加载时间
+  function loadTime() {
+    const saved = localStorage.getItem('fog_station_game_time');
+    if (saved) {
+      try {
+        const loaded = JSON.parse(saved);
+        gameTime.day = loaded.day || 1;
+        gameTime.minutes = loaded.minutes || 0;
+      } catch (e) {
+        console.error('Failed to load game time', e);
+      }
+    }
+  }
+
+  // 设置时间（用于加载存档）
+  function setTime(day, minutes) {
+    gameTime.day = day;
+    gameTime.minutes = minutes;
+    emitTick();
+  }
+
   return {
     start,
     stop,
     advance,
     nextDay,
     getTime,
+    setTime,
+    saveTime,
+    loadTime,
     format: () => format()
   };
 }

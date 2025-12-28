@@ -128,7 +128,10 @@ const CHATGPT_CONFIG = {
 let chatHistory = [];
 
 const time = createTimeSystem({
-  onTick: updateTimeDisplay,
+  onTick: () => {
+    updateTimeDisplay();
+    saveGameState(); // 自动保存
+  },
   onDayChange: () => handleDayChange(pendingDayChangeReason)
 });
 
@@ -184,6 +187,7 @@ function handleDayChange(reason) {
   stabilizerArmed = false;
   canSampleInCycle = true;
   updateResourceUI();
+  saveGameState(); // 保存跨天后的状态
   assignDailyStatuses(true);
   const prefix = reason === "manual" ? "时间跳转到" : "时间推进到";
   addLog(`${prefix} ${time.format()}。`, true);
@@ -415,6 +419,7 @@ btnSample.addEventListener("click", () => {
   canSampleInCycle = false; // Consume the sampling right for this cycle
   samplePermits = Math.max(0, samplePermits - 1);
   updateResourceUI();
+  saveGameState(); // 保存采集许可变化
   handleTestSequence("sample");
 
   const alertFlag = heartAlert || brainAlert;
@@ -431,6 +436,7 @@ btnSample.addEventListener("click", () => {
     stabilizerCount -= 1;
     stabilizerArmed = false;
     effectiveInc = 0;
+    saveGameState(); // 保存稳定剂使用
   }
 
   const prevShift = currentShift;
@@ -452,6 +458,7 @@ btnSample.addEventListener("click", () => {
     researchProgress = Math.min(100, parseFloat((researchProgress + researchGain).toFixed(2)));
   }
   updateResourceUI();
+  saveGameState(); // 保存实验体异化进度和研究进度
 
   const remark = getRemark(currentSubject, rawInc);
   const logLines = [`采集数据：${remark}`];
@@ -513,6 +520,7 @@ btnStabilizer?.addEventListener("click", () => {
   if (stabilizerArmed) return;
   stabilizerArmed = true;
   updateResourceUI();
+  saveGameState(); // 保存稳定剂待命状态
   addLog("稳定剂已待命：下一次异化增长将被抵消。", true);
 });
 
@@ -1587,14 +1595,36 @@ function setGuideStep(step) {
 renderSubjectList();
 renderPreviewGrid();
 showPreview();
+// 页面加载时读取库存
+loadInventory();
+
+// 页面加载时恢复游戏状态
+const gameLoaded = loadGameState();
+
 initPaimonAssistant();
 initChat();
 assignDailyStatuses(true);
-updateResourceUI();
+updateResourceUI(); // 确保UI显示正确的资源状态
 updateNextDayButtonState();
 time.start();
-addLog("系统启动：展示实验舱预览，等待选择实验体。");
-startGuide();
+
+// 根据是否加载存档显示不同的日志
+if (gameLoaded) {
+    addLog("系统恢复：游戏进度已加载。");
+} else {
+    addLog("系统启动：展示实验舱预览，等待选择实验体。");
+}
+
+// 只在新游戏时启动教程
+if (!gameLoaded || !localStorage.getItem('tutorial_completed')) {
+    startGuide();
+}
+
+// 如果加载了存档，刷新预览界面以显示正确的实验体状态
+if (gameLoaded) {
+    renderPreviewGrid();
+    renderSubjectList();
+}
 
 /* ---
   COMBAT SYSTEM INTEGRATION
@@ -1606,12 +1636,176 @@ const combatOverlay = document.getElementById('combat-overlay');
 const btnCombatExit = document.getElementById('btn-combat-exit');
 let currentCombat = null;
 
-// Simple inventory system (for demo)
+// 玩家道具库存系统
 let playerInventory = {
-    'heal_s': 3,      // 纳米修补剂(白) x3
-    'heal_m': 3,      // 纳米修补剂(蓝) x3
-    'buff_atk_s': 3   // 过载注射(白) x3
+    // 治疗类
+    'heal_s': 5,           // 纳米修补剂(白) x5
+    'heal_m': 3,           // 纳米修补剂(蓝) x3
+    'heal_l': 1,           // 纳米修补剂(紫) x1
+    // 增益类
+    'buff_atk_s': 3,       // 过载注射(白) x3
+    'buff_atk_m': 1,       // 过载注射(蓝) x1
+    'buff_def_s': 2,       // 护盾生成器 x2
+    // 资源类
+    'stabilizer': stabilizerCount || 3,      // 稳定剂
+    'sample_permit': samplePermits || 10,    // 采集许可
+    'research_data': 0     // 研究数据
 };
+
+// 保存/加载道具库存
+function saveInventory() {
+    localStorage.setItem('playerInventory', JSON.stringify(playerInventory));
+}
+
+function loadInventory() {
+    const saved = localStorage.getItem('playerInventory');
+    if (saved) {
+        try {
+            playerInventory = JSON.parse(saved);
+            // 同步稳定剂和采集许可到全局变量
+            if (playerInventory.stabilizer !== undefined) {
+                stabilizerCount = playerInventory.stabilizer;
+            }
+            if (playerInventory.sample_permit !== undefined) {
+                samplePermits = playerInventory.sample_permit;
+            }
+        } catch (e) {
+            console.error('加载库存失败:', e);
+        }
+    }
+}
+
+// 添加道具到库存
+function addItemToInventory(itemId, count = 1) {
+    if (playerInventory[itemId] === undefined) {
+        playerInventory[itemId] = 0;
+    }
+    playerInventory[itemId] += count;
+
+    // 同步资源类道具到全局变量
+    if (itemId === 'stabilizer') {
+        stabilizerCount = playerInventory.stabilizer;
+    } else if (itemId === 'sample_permit') {
+        samplePermits = playerInventory.sample_permit;
+    }
+
+    saveInventory();
+}
+
+// ==========================================
+// 游戏状态保存/加载系统
+// ==========================================
+
+// 保存完整游戏状态
+function saveGameState() {
+    try {
+        const gameState = {
+            // 时间
+            time: time.getTime(),
+
+            // 资源
+            resources: {
+                samplePermits,
+                stabilizerCount,
+                stabilizerArmed,
+                researchProgress
+            },
+
+            // 实验体状态
+            subjects: subjects.map(s => ({
+                id: s.id,
+                shift: s.shift,
+                baseShift: s.baseShift,
+                lastHeart: s.lastHeart,
+                lastBrain: s.lastBrain,
+                lastHeartAlert: s.lastHeartAlert,
+                lastBrainAlert: s.lastBrainAlert
+            })),
+
+            // 教程进度
+            tutorial: {
+                guideStepIndex,
+                completed: localStorage.getItem('tutorial_completed') === 'true'
+            },
+
+            // 保存时间戳
+            savedAt: Date.now()
+        };
+
+        localStorage.setItem('fog_station_game_state', JSON.stringify(gameState));
+        time.saveTime(); // 同时保存时间系统
+    } catch (e) {
+        console.error('Failed to save game state:', e);
+    }
+}
+
+// 加载完整游戏状态
+function loadGameState() {
+    try {
+        const saved = localStorage.getItem('fog_station_game_state');
+        if (!saved) {
+            console.log('No saved game state found, starting new game');
+            return false;
+        }
+
+        const gameState = JSON.parse(saved);
+
+        // 恢复时间
+        if (gameState.time) {
+            time.setTime(gameState.time.day, gameState.time.minutes);
+        } else {
+            time.loadTime(); // 兼容旧的保存格式
+        }
+
+        // 恢复资源
+        if (gameState.resources) {
+            samplePermits = gameState.resources.samplePermits ?? DAILY_SAMPLE_PERMITS;
+            stabilizerCount = gameState.resources.stabilizerCount ?? INITIAL_STABILIZERS;
+            stabilizerArmed = gameState.resources.stabilizerArmed ?? false;
+            researchProgress = gameState.resources.researchProgress ?? 0;
+
+            // 同步到库存系统
+            if (playerInventory.stabilizer !== undefined) {
+                playerInventory.stabilizer = stabilizerCount;
+            }
+            if (playerInventory.sample_permit !== undefined) {
+                playerInventory.sample_permit = samplePermits;
+            }
+        }
+
+        // 恢复实验体状态
+        if (gameState.subjects && Array.isArray(gameState.subjects)) {
+            gameState.subjects.forEach(savedSubj => {
+                const subj = subjects.find(s => s.id === savedSubj.id);
+                if (subj) {
+                    subj.shift = savedSubj.shift ?? 0;
+                    subj.baseShift = savedSubj.baseShift ?? 0;
+                    subj.lastHeart = savedSubj.lastHeart ?? 60;
+                    subj.lastBrain = savedSubj.lastBrain ?? 60;
+                    subj.lastHeartAlert = savedSubj.lastHeartAlert ?? false;
+                    subj.lastBrainAlert = savedSubj.lastBrainAlert ?? false;
+                }
+            });
+        }
+
+        // 恢复教程进度
+        if (gameState.tutorial) {
+            guideStepIndex = gameState.tutorial.guideStepIndex ?? 0;
+        }
+
+        console.log('Game state loaded successfully:', {
+            day: gameState.time?.day,
+            savedAt: new Date(gameState.savedAt).toLocaleString()
+        });
+
+        return true;
+    } catch (e) {
+        console.error('Failed to load game state:', e);
+        return false;
+    }
+}
+
+// 注意：库存加载和游戏状态加载已经在上面的初始化代码中完成
 
 if (btnCombatEntry) {
     btnCombatEntry.addEventListener('click', () => {
@@ -1727,6 +1921,7 @@ const btnOpenManage = document.getElementById('btn-open-management');
 const btnCloseManage = document.getElementById('btn-close-management');
 const manageOverlay = document.getElementById('management-overlay');
 const manageList = document.getElementById('management-list');
+let currentManagementTab = 'subjects';
 
 if (btnOpenManage) {
     btnOpenManage.addEventListener('click', () => {
@@ -1741,21 +1936,46 @@ if (btnCloseManage) {
     });
 }
 
+// 管理界面标签页切换
+const managementTabs = document.querySelectorAll('.management-tabs .tab-btn');
+managementTabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        currentManagementTab = tab;
+
+        // 更新按钮状态
+        managementTabs.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // 重新渲染内容
+        renderManagementUI();
+    });
+});
+
 function renderManagementUI() {
     manageList.innerHTML = '';
+
+    if (currentManagementTab === 'subjects') {
+        renderSubjectsTab();
+    } else if (currentManagementTab === 'items') {
+        renderItemsTab();
+    }
+}
+
+function renderSubjectsTab() {
     const players = getPlayerSubjects();
-    
+
     players.forEach(subj => {
         const item = document.createElement('div');
         item.className = 'manage-item';
-        
+
         const form = subj.getCurrentForm();
         const maxXp = form.xpMax;
         const xpPercent = maxXp > 0 ? (subj.xp / maxXp * 100).toFixed(1) : 100;
-        
+
         const skillsContainer = document.createElement('div');
         skillsContainer.className = 'manage-skills';
-        
+
         subj.getSkills().forEach(sid => {
             const skill = SKILL_DB[sid];
             if(skill) {
@@ -1780,6 +2000,77 @@ function renderManagementUI() {
         item.querySelector('.manage-info').appendChild(skillsContainer);
         manageList.appendChild(item);
     });
+}
+
+function renderItemsTab() {
+    // 按类别分组道具
+    const categories = {
+        '治疗类': [],
+        '增益类': [],
+        '资源类': []
+    };
+
+    ITEMS.forEach(itemData => {
+        const count = playerInventory[itemData.id] || 0;
+        const itemInfo = {
+            data: itemData,
+            count: count
+        };
+
+        if (itemData.type === 'heal') {
+            categories['治疗类'].push(itemInfo);
+        } else if (itemData.type.includes('buff')) {
+            categories['增益类'].push(itemInfo);
+        } else if (itemData.type === 'resource') {
+            categories['资源类'].push(itemInfo);
+        }
+    });
+
+    // 渲染每个类别
+    Object.keys(categories).forEach(category => {
+        if (categories[category].length === 0) return;
+
+        const categorySection = document.createElement('div');
+        categorySection.className = 'item-category';
+        categorySection.innerHTML = `<div class="category-title">${category}</div>`;
+
+        categories[category].forEach(({ data, count }) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'item-entry';
+
+            // 稀有度颜色
+            const rarityColors = {
+                'common': '#91a2f0',
+                'uncommon': '#9bdfff',
+                'rare': '#d69bff'
+            };
+            const rarityColor = rarityColors[data.rarity] || '#91a2f0';
+            const rarityText = {
+                'common': '普通',
+                'uncommon': '稀有',
+                'rare': '珍稀'
+            };
+
+            itemEl.innerHTML = `
+                <div class="item-header">
+                    <span class="item-name" style="color: ${rarityColor}">${data.name}</span>
+                    <span class="item-count">x${count}</span>
+                </div>
+                <div class="item-desc">${data.desc}</div>
+                <div class="item-rarity" style="color: ${rarityColor}">稀有度：${rarityText[data.rarity]}</div>
+                ${data.inCombat === false ? '<div class="item-usage">⚠️ 无法在战斗中使用</div>' : '<div class="item-usage">可在战斗中使用</div>'}
+            `;
+
+            categorySection.appendChild(itemEl);
+        });
+
+        manageList.appendChild(categorySection);
+    });
+
+    // 如果没有道具
+    if (Object.values(categories).every(cat => cat.length === 0)) {
+        manageList.innerHTML = '<div class="no-items">暂无道具</div>';
+    }
 }
 
 // 覆写 startCombatEncounter 以支持回调和所有技能
@@ -1862,6 +2153,16 @@ window.startCombatEncounter = function() {
                 setTimeout(() => float.remove(), 1000);
             }
         }
+        if (type === 'battle_drops') {
+            // 处理战斗掉落，更新库存
+            if (data && Array.isArray(data)) {
+                data.forEach(drop => {
+                    addItemToInventory(drop.id, drop.count);
+                });
+                // 更新UI显示
+                updateResourceUI();
+            }
+        }
     };
 
     currentCombat = new CombatSession(playerSubj, enemySubj, appendLog, updateUI, handleEvent);
@@ -1897,6 +2198,9 @@ window.startCombatEncounter = function() {
             const itemData = ITEMS.find(i => i.id === itemId);
             if (!itemData) return;
 
+            // 只显示可以在战斗中使用的道具
+            if (itemData.inCombat === false) return;
+
             const btn = document.createElement('button');
             btn.className = 'btn-item';
             if (count <= 0) btn.classList.add('depleted');
@@ -1910,8 +2214,10 @@ window.startCombatEncounter = function() {
                 tooltip += `恢复 ${itemData.val} 点生命值`;
             } else if (itemData.type === 'buff_atk') {
                 tooltip += `攻击力提升 ${(itemData.val * 100).toFixed(0)}%，持续 ${itemData.duration} 回合`;
+            } else if (itemData.type === 'buff_shield') {
+                tooltip += `获得 ${itemData.val} 点护盾`;
             } else {
-                tooltip += '使用后消耗一个回合';
+                tooltip += itemData.desc || '使用后消耗一个回合';
             }
             btn.title = tooltip;
 
@@ -1920,6 +2226,7 @@ window.startCombatEncounter = function() {
                     const success = currentCombat.useItem(itemId);
                     if (success) {
                         playerInventory[itemId]--;
+                        saveInventory();
                         renderItemPanel();
                     }
                 }
