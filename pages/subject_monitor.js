@@ -103,6 +103,25 @@ const ENDING_ACHIEVEMENTS_KEY = "fog_station_ending_achievements";
 let notesState = loadNotesState();
 let endingAchievements = loadEndingAchievements();
 let lastResearchProgress = 0;
+const ACHIEVEMENTS_STATE_KEY = "fog_station_achievements_state";
+const ACHIEVEMENTS = [
+  { id: "sample-10", name: "微光记录", desc: "累计采集 10 次数据。", type: "sample", target: 10 },
+  { id: "sample-50", name: "数据追踪者", desc: "累计采集 50 次数据。", type: "sample", target: 50 },
+  { id: "sample-100", name: "深层观测者", desc: "累计采集 100 次数据。", type: "sample", target: 100 },
+  { id: "battle-1", name: "第一次交火", desc: "累计战斗 1 次。", type: "battle", target: 1 },
+  { id: "battle-10", name: "异化前线", desc: "累计战斗 10 次。", type: "battle", target: 10 },
+  { id: "battle-50", name: "战场记录官", desc: "累计战斗 50 次。", type: "battle", target: 50 },
+  { id: "stabilizer-5", name: "延迟崩塌", desc: "使用稳定剂 5 次。", type: "stabilizer", target: 5 },
+  { id: "stabilizer-10", name: "稳定协议", desc: "使用稳定剂 10 次。", type: "stabilizer", target: 10 },
+  { id: "stabilizer-30", name: "冷静执掌", desc: "使用稳定剂 30 次。", type: "stabilizer", target: 30 }
+];
+const META_ACHIEVEMENT = {
+  id: "meta-lazymice",
+  name: "Lazymice的认可",
+  desc: "解锁全部成就与结局。",
+  isGold: true
+};
+let achievementState = loadAchievementState();
 
 async function initNotes() {
   try {
@@ -477,6 +496,63 @@ function recordEndingAchievement(note) {
   saveEndingAchievements();
 }
 
+function loadAchievementState() {
+  const raw = localStorage.getItem(ACHIEVEMENTS_STATE_KEY);
+  if (!raw) {
+    return { unlocked: new Set(), counts: { sample: 0, battle: 0, stabilizer: 0 } };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      unlocked: new Set(parsed.unlocked || []),
+      counts: {
+        sample: parsed.counts?.sample || 0,
+        battle: parsed.counts?.battle || 0,
+        stabilizer: parsed.counts?.stabilizer || 0
+      }
+    };
+  } catch (err) {
+    console.warn("Failed to load achievements", err);
+    return { unlocked: new Set(), counts: { sample: 0, battle: 0, stabilizer: 0 } };
+  }
+}
+
+function saveAchievementState() {
+  localStorage.setItem(
+    ACHIEVEMENTS_STATE_KEY,
+    JSON.stringify({
+      unlocked: Array.from(achievementState.unlocked),
+      counts: achievementState.counts
+    })
+  );
+}
+
+function incrementAchievement(type, amount = 1) {
+  if (!achievementState.counts[type]) achievementState.counts[type] = 0;
+  achievementState.counts[type] += amount;
+  checkAchievementUnlocks(type);
+  checkMetaAchievement();
+  saveAchievementState();
+  renderAchievementsList();
+}
+
+function checkAchievementUnlocks(type) {
+  ACHIEVEMENTS.filter(a => a.type === type).forEach(ach => {
+    if (achievementState.counts[type] >= ach.target) {
+      achievementState.unlocked.add(ach.id);
+    }
+  });
+}
+
+function checkMetaAchievement() {
+  const allCore = ACHIEVEMENTS.every(ach => achievementState.unlocked.has(ach.id));
+  const endingNotes = NOTE_ENTRIES.filter(note => note.unlock?.type === "ending");
+  const allEndings = endingNotes.every(note => endingAchievements.has(note.id));
+  if (allCore && allEndings) {
+    achievementState.unlocked.add(META_ACHIEVEMENT.id);
+  }
+}
+
 function renderNotesList(activeId = null) {
   if (!notesListEl) return;
   notesListEl.innerHTML = "";
@@ -664,6 +740,10 @@ function syncNotesWithState() {
         saveNotesState();
       }
     });
+  checkAchievementUnlocks("sample");
+  checkAchievementUnlocks("battle");
+  checkAchievementUnlocks("stabilizer");
+  checkMetaAchievement();
   subjects.forEach(subj => {
     const shift = subj.shift || 0;
     unlockShiftNotesForSubject(subj, 0, shift);
@@ -709,6 +789,7 @@ function checkEndingUnlocks() {
       }
     }
   });
+  checkMetaAchievement();
 }
 
 function restartGame() {
@@ -738,19 +819,53 @@ function syncEndingAchievements() {
 function renderAchievementsList() {
   if (!notesAchievementsListEl) return;
   notesAchievementsListEl.innerHTML = "";
-  const sorted = Array.from(endingAchievements);
-  if (sorted.length === 0) {
+  const endingNotes = NOTE_ENTRIES.filter(note => note.unlock?.type === "ending");
+  const entries = [
+    ...ACHIEVEMENTS.map(ach => ({
+      id: ach.id,
+      title: ach.name,
+      desc: ach.desc,
+      unlocked: achievementState.unlocked.has(ach.id),
+      meta: `${achievementState.counts[ach.type] || 0}/${ach.target}`,
+      isHiddenEnding: false
+    })),
+    {
+      id: META_ACHIEVEMENT.id,
+      title: META_ACHIEVEMENT.name,
+      desc: META_ACHIEVEMENT.desc,
+      unlocked: achievementState.unlocked.has(META_ACHIEVEMENT.id),
+      meta: "总成就",
+      isHiddenEnding: false,
+      isGold: true
+    },
+    ...endingNotes.map(note => ({
+      id: note.id,
+      title: note.title,
+      desc: "达成特定结局后解锁。",
+      unlocked: endingAchievements.has(note.id),
+      meta: "结局",
+      isHiddenEnding: note.id === "ending-hidden"
+    }))
+  ];
+
+  if (entries.length === 0) {
     const empty = document.createElement("div");
     empty.className = "notes-achievement-empty";
     empty.textContent = "暂无已记录成就";
     notesAchievementsListEl.appendChild(empty);
     return;
   }
-  sorted.forEach(id => {
-    const note = NOTE_ENTRIES.find(n => n.id === id);
+
+  entries.forEach(entry => {
     const tag = document.createElement("div");
     tag.className = "notes-achievement-tag";
-    tag.textContent = note ? note.title : id;
+    if (!entry.unlocked) tag.classList.add("is-locked");
+    if (entry.isHiddenEnding) tag.classList.add("is-hidden");
+    if (entry.isGold) tag.classList.add("is-gold");
+    tag.textContent = entry.title;
+    if (entry.unlocked) {
+      tag.title = entry.desc;
+    }
     notesAchievementsListEl.appendChild(tag);
   });
 }
@@ -1247,6 +1362,7 @@ btnSample.addEventListener("click", () => {
   const logLines = [`采集数据：${remark}`];
   if (usedStabilizer) {
     logLines.push("稳定剂生效：本次异化增长已被抵消。");
+    incrementAchievement("stabilizer", 1);
   }
   const logText = logLines.join("\n");
 
@@ -1258,6 +1374,7 @@ btnSample.addEventListener("click", () => {
     "sample",
     currentShift
   );
+  incrementAchievement("sample", 1);
   triggerNotesOnShift(currentSubject, prevShift, currentShift);
   if (guideActive) {
     if (guideStepIndex === 2) {
@@ -1799,7 +1916,7 @@ function handleChatCommand(command) {
   if (normalized === "cheats_lazymice") {
     appendChatMessage({
       user: "系统",
-      text: "可用指令：restart_lazymice, 10x_lazymice, permits_lazymice, stabilizer_lazymice, research_lazymice, unlock_notes_lazymice, endings_lazymice",
+      text: "指令清单：restart_lazymice（清空存储并重启世界观）、10x_lazymice（所有道具+10）、permits_lazymice（采集许可+10）、stabilizer_lazymice（稳定剂+5）、research_lazymice（研究进度+25%）、unlock_notes_lazymice（解锁全部笔记）、endings_lazymice（解锁全部结局成就）、achievements_lazymice（解锁全部成就）",
       ts: Date.now()
     });
     return true;
@@ -1882,6 +1999,28 @@ function handleChatCommand(command) {
     appendChatMessage({
       user: "系统",
       text: "已解锁全部结局成就。",
+      ts: Date.now()
+    });
+    return true;
+  }
+  if (normalized === "achievements_lazymice") {
+    ACHIEVEMENTS.forEach(ach => {
+      achievementState.unlocked.add(ach.id);
+      achievementState.counts[ach.type] = Math.max(achievementState.counts[ach.type] || 0, ach.target);
+    });
+    NOTE_ENTRIES.filter(note => note.unlock?.type === "ending")
+      .forEach(note => {
+        unlockNote(note);
+        recordEndingAchievement(note);
+      });
+    checkMetaAchievement();
+    saveAchievementState();
+    saveNotesState();
+    saveEndingAchievements();
+    renderAchievementsList();
+    appendChatMessage({
+      user: "系统",
+      text: "已解锁全部成就。",
       ts: Date.now()
     });
     return true;
@@ -2566,7 +2705,7 @@ assignDailyStatuses(true);
 updateResourceUI(); // 确保UI显示正确的资源状态
 updateNextDayButtonState();
 time.start();
-const shouldStartGuide = !gameLoaded || !localStorage.getItem('tutorial_completed');
+const shouldStartGuide = !gameLoaded && !localStorage.getItem('tutorial_completed');
 maybePlayWorldviewIntro(gameLoaded, () => {
     if (shouldStartGuide) startGuide();
 });
@@ -3042,6 +3181,7 @@ function renderItemsTab() {
 // 覆写 startCombatEncounter 以支持回调和所有技能
 window.startCombatEncounter = function() {
     combatOverlay.classList.remove('hidden');
+    incrementAchievement("battle", 1);
 
     const players = getPlayerSubjects();
     const playerSubj = players[0];

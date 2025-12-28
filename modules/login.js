@@ -50,6 +50,15 @@ export function initLoginSystem() {
   
   let currentAvatar = userData?.avatar || 'arts/派蒙1.jpeg';
 
+  if (userData) {
+    updateGameUI(userData);
+    overlay.style.display = 'none';
+    if (typeof window.resetPaimonWidget === 'function') {
+      window.resetPaimonWidget();
+    }
+    return;
+  }
+
   // Initial Typewriter Status
   typewriter(statusLine, '系统待机中... 正在初始化安全协议...', 50);
 
