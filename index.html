@@ -304,42 +304,47 @@
       <button id="btn-combat-exit" class="btn-close-combat">断开连接</button>
     </div>
     
-    <div class="combat-scene">
-      <!-- Enemy Status -->
-      <div class="combat-unit enemy">
-        <div class="unit-hud">
-          <div class="unit-name" id="enemy-name">TARGET</div>
-          <div class="hp-bar-container">
-            <div class="hp-bar-fill" id="enemy-hp-bar"></div>
-          </div>
-          <div class="hp-text" id="enemy-hp-text">???/???</div>
-          <div class="buffs-container" id="enemy-buffs"></div>
-        </div>
+    <div class="combat-body">
+      <div class="combat-main">
+        <div class="combat-scene">
+          <!-- Enemy Status -->
+          <div class="combat-unit enemy">
+            <div class="unit-hud">
+              <div class="unit-name" id="enemy-name">TARGET</div>
+              <div class="hp-bar-container">
+                <div class="hp-bar-fill" id="enemy-hp-bar"></div>
+              </div>
+              <div class="hp-text" id="enemy-hp-text">???/???</div>
+              <div class="buffs-container" id="enemy-buffs"></div>
+            </div>
         <div class="unit-sprite" id="enemy-sprite">
            <!-- Placeholder visual -->
-           <div class="sprite-box enemy-box"></div>
+           <div class="sprite-box enemy-box">
+             <div class="sigil"></div>
+           </div>
         </div>
-      </div>
-
-      <!-- Player Status -->
-      <div class="combat-unit player">
-        <div class="unit-sprite" id="player-sprite">
-           <div class="sprite-box player-box"></div>
-        </div>
-        <div class="unit-hud">
-          <div class="unit-name" id="player-name">SUBJECT</div>
-          <div class="hp-bar-container">
-            <div class="hp-bar-fill" id="player-hp-bar"></div>
           </div>
-          <div class="hp-text" id="player-hp-text">100/100</div>
-          <div class="buffs-container" id="player-buffs"></div>
-        </div>
-      </div>
-    </div>
 
-    <div class="combat-controls">
-      <div class="combat-log" id="combat-log">
-        <div class="log-line">神经连接已建立。等待同步...</div>
+          <!-- Player Status -->
+          <div class="combat-unit player">
+        <div class="unit-sprite" id="player-sprite">
+           <div class="sprite-box player-box">
+             <div class="sigil"></div>
+           </div>
+        </div>
+            <div class="unit-hud">
+              <div class="unit-name" id="player-name">SUBJECT</div>
+              <div class="hp-bar-container">
+                <div class="hp-bar-fill" id="player-hp-bar"></div>
+              </div>
+              <div class="hp-text" id="player-hp-text">100/100</div>
+              <div class="buffs-container" id="player-buffs"></div>
+            </div>
+          </div>
+        </div>
+        <div class="combat-log" id="combat-log">
+          <div class="log-line">神经连接已建立。等待同步...</div>
+        </div>
       </div>
       <div class="combat-actions">
         <div class="skill-panel" id="skill-panel">

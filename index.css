@@ -1865,15 +1865,30 @@ header .status {
   color: #000;
 }
 
+.combat-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  min-height: 0;
+}
+
+.combat-main {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #30363d;
+  min-width: 0;
+}
+
 .combat-scene {
   flex: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 40px;
-  background: 
+  background:
     radial-gradient(circle at center, #1a0e0e 0%, #0d1117 80%);
   position: relative;
+  min-height: 0;
 }
 
 .combat-unit {
@@ -1952,6 +1967,67 @@ header .status {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+}
+.sprite-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.03),
+      rgba(255, 255, 255, 0.03) 2px,
+      transparent 2px,
+      transparent 6px
+    );
+  opacity: 0.5;
+  pointer-events: none;
+}
+.sprite-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(118, 227, 234, 0.18), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(248, 81, 73, 0.16), transparent 55%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.sigil {
+  position: absolute;
+  inset: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.15;
+  letter-spacing: 0.12em;
+  white-space: normal;
+  word-break: break-all;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  column-count: 4;
+  column-gap: 10px;
+  color: rgba(230, 237, 243, 0.7);
+  text-shadow: 0 0 8px rgba(118, 227, 234, 0.25);
+  opacity: 0.8;
+  transform: translateY(0);
+  animation: sigil-stream 1.4s steps(16, end) infinite;
+}
+
+.enemy .sigil {
+  color: rgba(248, 81, 73, 0.75);
+  text-shadow: 0 0 8px rgba(248, 81, 73, 0.35);
+  animation-duration: 1.2s;
+}
+
+@keyframes sigil-stream {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-18%); }
+  36% { transform: translateY(-20%); }
+  70% { transform: translateY(-36%); }
+  71% { transform: translateY(-40%); }
+  100% { transform: translateY(-52%); }
 }
 .sprite-box.enemy-box {
   box-shadow: 0 0 15px rgba(248, 81, 73, 0.4);
@@ -1960,17 +2036,11 @@ header .status {
   box-shadow: 0 0 15px rgba(118, 227, 234, 0.4);
 }
 
-.combat-controls {
-  height: 180px;
-  border-top: 1px solid #30363d;
-  display: flex;
-  background: #161b22;
-}
-
 .combat-log {
-  flex: 1;
+  height: 150px;
   padding: 12px;
-  border-right: 1px solid #30363d;
+  border-top: 1px solid #30363d;
+  background: #161b22;
   overflow-y: auto;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -2001,52 +2071,70 @@ header .status {
 .log-effect {
   color: #d2a8ff;
 }
+.log-drop {
+  color: #ffcf5c;
+  font-weight: 600;
+}
 .log-warning {
   color: #f0883e;
 }
 
 .combat-actions {
-  width: 280px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #30363d;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #0f141a;
+  min-width: 0;
 }
 
 .skill-panel {
   flex: 1;
-  padding: 12px;
-  padding-bottom: 6px;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
-  border-bottom: 1px solid #30363d;
+  padding-right: 4px;
+  min-height: 0;
 }
 
 .item-panel {
-  padding: 8px 12px;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  min-height: 44px;
-  max-height: 60px;
+  flex: 0.7;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
   overflow-y: auto;
+  padding-right: 4px;
+  min-height: 90px;
 }
 
 .btn-skill {
   background: #0d1117;
   border: 1px solid #30363d;
   color: #e6edf3;
-  padding: 8px;
+  padding: 4px 6px;
   text-align: left;
   font-family: var(--font-primary);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.btn-skill .skill-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.btn-skill .skill-title {
+  font-weight: 600;
+}
+.btn-skill .skill-desc {
+  font-size: 10px;
+  color: #8b949e;
+  line-height: 1.35;
 }
 .btn-skill:hover:not(:disabled) {
   border-color: #76e3ea;
@@ -2063,21 +2151,23 @@ header .status {
 }
 
 .btn-item {
-  background: #1a1f26;
-  border: 1px solid #58a6ff;
+  background: #11161c;
+  border: 1px solid #2b3a4a;
   color: #e6edf3;
-  padding: 4px 8px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  padding: 5px 6px;
+  font-family: var(--font-primary);
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
   border-radius: 2px;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
 }
 .btn-item:hover:not(:disabled) {
   border-color: #76e3ea;
-  background: rgba(118, 227, 234, 0.1);
-  transform: translateY(-1px);
+  background: rgba(118, 227, 234, 0.06);
 }
 .btn-item:disabled {
   opacity: 0.3;
@@ -2086,6 +2176,26 @@ header .status {
 .btn-item.depleted {
   opacity: 0.2;
   text-decoration: line-through;
+}
+
+.btn-item .item-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.btn-item .item-desc {
+  font-size: 10px;
+  color: #8b949e;
+  line-height: 1.35;
+}
+
+.btn-item .item-usage {
+  font-size: 10px;
+  color: #76e3ea;
+  font-family: var(--font-mono);
 }
 
 .blink-slow {

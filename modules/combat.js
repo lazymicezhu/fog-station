@@ -20,6 +20,7 @@ export class CombatSession {
         this.cooldowns = { player: {}, enemy: {} }; // Skill cooldowns
         this.stunned = { player: false, enemy: false }; // Stun status
         this.lastSkillUsed = { player: null, enemy: null }; // Track last skill for echo/copy effects
+        this.dooms = { player: [], enemy: [] }; // Delayed execution effects (e.g., erase)
     }
 
     async start() {
@@ -96,6 +97,18 @@ export class CombatSession {
                     cds[skillId]--;
                 }
             });
+
+            // Process delayed execution effects
+            const dooms = this.dooms[side];
+            for (let i = dooms.length - 1; i >= 0; i--) {
+                const doom = dooms[i];
+                doom.remaining--;
+                if (doom.remaining <= 0) {
+                    target.currentHp = 0;
+                    dooms.splice(i, 1);
+                    this.onLog(`  🧨 ${target.getName()} 被擦除，存在记录清空`);
+                }
+            }
 
             // Clear stun status at turn start
             if (this.stunned[side]) {
@@ -473,6 +486,25 @@ export class CombatSession {
         } else if (skillId === 'signal_jam') {
             // Skill failure chance (simplified - just show message)
             this.onLog(`  📡 干扰信号，对手技能失败概率+40%`);
+        } else if (skillId === 'breakthrough') {
+            const drop = this.rollSingleDrop();
+            if (drop) {
+                const item = ITEMS.find(i => i.id === drop.id);
+                this.onLog(`  🧲 突破成功，获得道具：${item ? item.name : drop.id}`);
+                if (this.onEvent) {
+                    this.onEvent('battle_drops', [{ id: drop.id, count: 1 }]);
+                }
+            } else {
+                this.onLog(`  🧲 突破未获取到道具`);
+            }
+        } else if (skillId === 'erase') {
+            const existing = this.dooms[defenderSide].find(d => d.id === 'erase');
+            if (existing) {
+                existing.remaining = Math.max(existing.remaining, 4);
+            } else {
+                this.dooms[defenderSide].push({ id: 'erase', remaining: 4 });
+            }
+            this.onLog(`  ⏳ 擦除已标记，${SKILL_DB[skillId]?.name}将在 4 回合后生效`);
         }
 
         // Special multi-hit skills
@@ -488,6 +520,31 @@ export class CombatSession {
         const map = ELEMENT_CHART[atkEl];
         if (map && map[defEl] !== undefined) return map[defEl];
         return 1.0;
+    }
+
+    rollSingleDrop() {
+        const rarityRoll = Math.random() * 100;
+        let rarity;
+        if (rarityRoll < 60) {
+            rarity = 'common';
+        } else if (rarityRoll < 90) {
+            rarity = 'uncommon';
+        } else {
+            rarity = 'rare';
+        }
+
+        const pool = DROP_TABLE[rarity];
+        if (!pool || pool.length === 0) return null;
+
+        const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
+        let roll = Math.random() * totalWeight;
+        for (const dropItem of pool) {
+            roll -= dropItem.weight;
+            if (roll <= 0) {
+                return { id: dropItem.id };
+            }
+        }
+        return { id: pool[pool.length - 1].id };
     }
 
     useItem(itemId) {

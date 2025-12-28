@@ -1839,10 +1839,51 @@ if (btnCombatExit) {
 
 function renderCombatUI(session) {
     if (!session) return;
+    const sigilCache = renderCombatUI.sigilCache || (renderCombatUI.sigilCache = new Map());
+
+    const buildSigilText = (name) => {
+        if (sigilCache.has(name)) return sigilCache.get(name);
+
+        const baseChars = Array.from(name).filter(ch => ch.trim() !== '');
+        const filler = ['·', '•', '░', '◇', '◆', '○', '◎', '△', '▽', '∴', '∵', 'Ω', 'Ψ', 'Φ', 'Σ', 'λ', '0', '1'];
+        const pool = [...new Set([...baseChars, ...filler])];
+
+        const shuffle = (arr) => {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        };
+
+        const targetLength = 240;
+        const sequence = [];
+        while (sequence.length < targetLength) {
+            let batch = shuffle(pool);
+            if (sequence.length > 0 && batch[0] === sequence[sequence.length - 1]) {
+                batch = batch.slice(1).concat(batch[0]);
+            }
+            sequence.push(...batch);
+        }
+        const text = sequence.slice(0, targetLength).join('');
+        sigilCache.set(name, text);
+        return text;
+    };
+
+    const setSigil = (spriteId, name) => {
+        const sprite = document.getElementById(spriteId);
+        if (!sprite) return;
+        const sigil = sprite.querySelector('.sigil');
+        if (!sigil) return;
+        const text = buildSigilText(name);
+        if (sigil.textContent !== text) sigil.textContent = text;
+    };
 
     // Enemy
     const eName = document.getElementById('enemy-name');
     if (eName) eName.textContent = `${session.enemy.getName()} [${ELEMENT_NAMES[session.enemy.element]}]`;
+    setSigil('enemy-sprite', session.enemy.getName());
 
     const eHp = session.enemy.currentHp;
     const eMax = session.enemy.getMaxHp();
@@ -1857,6 +1898,7 @@ function renderCombatUI(session) {
     // Player
     const pName = document.getElementById('player-name');
     if (pName) pName.textContent = `${session.player.getName()} [${ELEMENT_NAMES[session.player.element]}]`;
+    setSigil('player-sprite', session.player.getName());
 
     const pHp = session.player.currentHp;
     const pMax = session.player.getMaxHp();
@@ -2110,6 +2152,8 @@ window.startCombatEncounter = function() {
             div.classList.add('log-shield');
         } else if (text.includes('⚡') || text.includes('⚔️') || text.includes('🔥')) {
             div.classList.add('log-effect');
+        } else if (text.includes('掉落') || text.includes('回收战场物资') || text.includes('可回收物资')) {
+            div.classList.add('log-drop');
         } else if (text.includes('已结束') || text.includes('无法') || text.includes('冷却')) {
             div.classList.add('log-warning');
         }
@@ -2177,9 +2221,9 @@ window.startCombatEncounter = function() {
         btn.className = 'btn-skill';
 
         btn.innerHTML = `
-            <div style="display:flex;flex-direction:column;align-items:flex-start;">
-                <span style="font-weight:bold">${skill.name}</span>
-                <span style="font-size:10px;color:#8b949e">${skill.desc}</span>
+            <div class="skill-meta">
+                <span class="skill-title">${skill.name}</span>
+                <span class="skill-desc">${skill.desc}</span>
             </div>
         `;
         btn.onclick = () => {
@@ -2205,21 +2249,24 @@ window.startCombatEncounter = function() {
             btn.className = 'btn-item';
             if (count <= 0) btn.classList.add('depleted');
 
-            btn.textContent = `${itemData.name} x${count}`;
-            btn.disabled = count <= 0 || currentCombat.state !== 'PLAYER_ACT';
+            const usageText = itemData.desc
+                ? itemData.desc
+                : (itemData.type === 'heal'
+                    ? `恢复 ${itemData.val} 点生命值`
+                    : itemData.type === 'buff_atk'
+                        ? `攻击力提升 ${(itemData.val * 100).toFixed(0)}%，持续 ${itemData.duration} 回合`
+                        : itemData.type === 'buff_shield'
+                            ? `获得 ${itemData.val} 点护盾`
+                            : '使用后消耗一个回合');
 
-            // Generate tooltip based on item type
-            let tooltip = itemData.name + '\n';
-            if (itemData.type === 'heal') {
-                tooltip += `恢复 ${itemData.val} 点生命值`;
-            } else if (itemData.type === 'buff_atk') {
-                tooltip += `攻击力提升 ${(itemData.val * 100).toFixed(0)}%，持续 ${itemData.duration} 回合`;
-            } else if (itemData.type === 'buff_shield') {
-                tooltip += `获得 ${itemData.val} 点护盾`;
-            } else {
-                tooltip += itemData.desc || '使用后消耗一个回合';
-            }
-            btn.title = tooltip;
+            btn.innerHTML = `
+                <div class="item-title">
+                    <span>${itemData.name}</span>
+                    <span>x${count}</span>
+                </div>
+                <div class="item-desc">${usageText}</div>
+            `;
+            btn.disabled = count <= 0 || currentCombat.state !== 'PLAYER_ACT';
 
             btn.onclick = () => {
                 if (count > 0 && currentCombat.useItem) {
