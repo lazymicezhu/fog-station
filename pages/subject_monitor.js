@@ -48,6 +48,7 @@ const btnSample = document.getElementById("btn-sample");
 const btnRandom = document.getElementById("btn-random");
 const btnPreview = document.getElementById("btn-preview");
 const btnStabilizer = document.getElementById("btn-stabilizer");
+const btnResearchData = document.getElementById("btn-research-data");
 const guideMask = document.getElementById("guide-mask");
 const guideOverlay = document.getElementById("guide-overlay");
 const guideCard = document.getElementById("guide-card");
@@ -920,6 +921,11 @@ function updateResourceUI() {
   if (btnStabilizer) {
     btnStabilizer.disabled = stabilizerCount <= 0 || stabilizerArmed;
   }
+  if (btnResearchData) {
+    const dataCount = playerInventory?.research_data || 0;
+    btnResearchData.textContent = `使用实验数据 x${dataCount}`;
+    btnResearchData.disabled = dataCount <= 0 || researchProgress >= 100;
+  }
   const progressValue = Math.min(100, researchProgress);
   if (researchFill) researchFill.style.width = `${progressValue}%`;
   if (researchText) researchText.textContent = `${progressValue.toFixed(1)}%`;
@@ -1300,6 +1306,25 @@ btnStabilizer?.addEventListener("click", () => {
   updateResourceUI();
   saveGameState(); // 保存稳定剂待命状态
   addLog("稳定剂已待命：下一次异化增长将被抵消。", true);
+});
+
+btnResearchData?.addEventListener("click", () => {
+  const count = playerInventory?.research_data || 0;
+  if (count <= 0) {
+    sysAlert("实验数据不足。");
+    return;
+  }
+  if (researchProgress >= 100) {
+    sysAlert("研究进度已满。");
+    return;
+  }
+  const gain = 5;
+  playerInventory.research_data = Math.max(0, count - 1);
+  researchProgress = Math.min(100, parseFloat((researchProgress + gain).toFixed(2)));
+  saveInventory();
+  saveGameState();
+  updateResourceUI();
+  addLog(`使用实验数据：研究进度 +${gain}% 。`, true);
 });
 
 btnPreview.addEventListener("click", () => {
@@ -1771,6 +1796,14 @@ async function sendChatMessage() {
 
 function handleChatCommand(command) {
   const normalized = command.toLowerCase();
+  if (normalized === "cheats_lazymice") {
+    appendChatMessage({
+      user: "系统",
+      text: "可用指令：restart_lazymice, 10x_lazymice, permits_lazymice, stabilizer_lazymice, research_lazymice, unlock_notes_lazymice, endings_lazymice",
+      ts: Date.now()
+    });
+    return true;
+  }
   if (normalized === "restart_lazymice") {
     appendChatMessage({
       user: "系统",
@@ -1789,6 +1822,66 @@ function handleChatCommand(command) {
     appendChatMessage({
       user: "系统",
       text: "已发放：所有道具 x10。",
+      ts: Date.now()
+    });
+    return true;
+  }
+  if (normalized === "permits_lazymice") {
+    addItemToInventory("sample_permit", 10);
+    samplePermits = playerInventory.sample_permit || samplePermits;
+    updateResourceUI();
+    appendChatMessage({
+      user: "系统",
+      text: "采集许可 +10。",
+      ts: Date.now()
+    });
+    return true;
+  }
+  if (normalized === "stabilizer_lazymice") {
+    addItemToInventory("stabilizer", 5);
+    stabilizerCount = playerInventory.stabilizer || stabilizerCount;
+    updateResourceUI();
+    appendChatMessage({
+      user: "系统",
+      text: "稳定剂 +5。",
+      ts: Date.now()
+    });
+    return true;
+  }
+  if (normalized === "research_lazymice") {
+    const gain = 25;
+    researchProgress = Math.min(100, parseFloat((researchProgress + gain).toFixed(2)));
+    updateResourceUI();
+    appendChatMessage({
+      user: "系统",
+      text: `研究进度 +${gain}%。`,
+      ts: Date.now()
+    });
+    return true;
+  }
+  if (normalized === "unlock_notes_lazymice") {
+    NOTE_ENTRIES.forEach(note => unlockNote(note));
+    saveNotesState();
+    renderNotesList();
+    appendChatMessage({
+      user: "系统",
+      text: "已解锁全部笔记条目。",
+      ts: Date.now()
+    });
+    return true;
+  }
+  if (normalized === "endings_lazymice") {
+    NOTE_ENTRIES.filter(note => note.unlock?.type === "ending")
+      .forEach(note => {
+        unlockNote(note);
+        recordEndingAchievement(note);
+      });
+    saveNotesState();
+    saveEndingAchievements();
+    renderAchievementsList();
+    appendChatMessage({
+      user: "系统",
+      text: "已解锁全部结局成就。",
       ts: Date.now()
     });
     return true;
